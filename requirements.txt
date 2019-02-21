@@ -1,5 +1,5 @@
 requests
 python-telegram-bot
 beautifulsoup4
-sentry-sdk==0.7.2
+sentry-sdk==0.7.3
 requests_futures
