@@ -665,8 +665,5 @@ dispatcher.add_handler(send_message_to_everyone_handler)
 
 threading.Thread(target=check_online_status,daemon=True).start()
 
-while True:
-    try:
-        updater.start_polling()
-    except Exception as e:
-        handle_exception(e)
+updater.start_polling()
+updater.idle()
