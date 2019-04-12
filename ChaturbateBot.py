@@ -105,6 +105,19 @@ else:
         logging.error(e,exc_info=True)
 
 
+# default table creation
+exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
+        USERNAME  CHAR(60) NOT NULL,
+        CHAT_ID  CHAR(100),
+        ONLINE CHAR(1))""")
+
+# admin table creation
+exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
+        CHAT_ID  CHAR(100))""")
+
+
+
+
 def exec_query(query):
     """Executes a db query
 
@@ -200,15 +213,6 @@ def admin_check(chatid):
         return True
 
 
-# default table creation
-exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
-        USERNAME  CHAR(60) NOT NULL,
-        CHAT_ID  CHAR(100),
-        ONLINE CHAR(1))""")
-
-# admin table creation
-exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
-        CHAT_ID  CHAR(100))""")
 
 # normal functions
 
