@@ -200,15 +200,6 @@ def admin_check(chatid):
         return True
 
 
-# default table creation
-exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
-        USERNAME  CHAR(60) NOT NULL,
-        CHAT_ID  CHAR(100),
-        ONLINE CHAR(1))""")
-
-# admin table creation
-exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
-        CHAT_ID  CHAR(100))""")
 
 # normal functions
 
@@ -661,6 +652,16 @@ dispatcher.add_handler(authorize_admin_handler)
 send_message_to_everyone_handler = CommandHandler(
     'send_message_to_everyone', send_message_to_everyone, pass_args=True)
 dispatcher.add_handler(send_message_to_everyone_handler)
+
+# default table creation
+exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
+        USERNAME  CHAR(60) NOT NULL,
+        CHAT_ID  CHAR(100),
+        ONLINE CHAR(1))""")
+
+# admin table creation
+exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
+        CHAT_ID  CHAR(100))""")
 
 
 threading.Thread(target=check_online_status,daemon=True).start()
