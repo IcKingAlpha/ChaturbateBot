@@ -214,6 +214,7 @@ def start(bot, update):
 def add(bot, update, args):
     logging.info("add")
     chatid = update.message.chat_id
+    username_message_list=[]
     try:
         if len(args) != 1:
             risposta(
@@ -227,11 +228,33 @@ def add(bot, update, args):
         risposta(chatid, "An error happened, try again", bot)
         handle_exception(e)
         return
-    try:
-        target = "https://en.chaturbate.com/api/chatvideocontext/" + username
+    if "," in username:
+        for splitted_username in username.replace(" ","").split(","):
+            username_message_list.append(splitted_username)
+    else:
+        username_message_list.append(username)    
 
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
+
+
+
+    user_limit_local = user_limit #idk why but python doesn't seem to like args["user_limit"] here :(
+
+    if admin_check(chatid):
+        user_limit_local = 0  # admin has power, bitches
+
+    if len(username_message_list) > user_limit_local or user_limit_local != 0:
+        risposta(chatid,"You are trying to add more usernames than your limit permits, which is "+user_limit_local,bot)
+        return
+
+
+
+
+    headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
+     
+    for username in username_message_list:
+      try:   
+        
+        target = "https://en.chaturbate.com/api/chatvideocontext/" + username    
         response = requests.get(target, headers=headers)
         # server response + json parsing
         response_json = json.loads(response.content)
@@ -274,14 +297,10 @@ def add(bot, update, args):
             finally:
                 db.close()
 
-            user_limit_local = user_limit
-
-            if admin_check(chatid):
-                user_limit_local = 0  # admin has power, bitches
+            
 
             # 0 is unlimited usernames
-            if len(username_list) < user_limit_local or user_limit_local == 0:
-                if username not in username_list:
+            if username not in username_list:
                     exec_query(
                         "INSERT INTO CHATURBATE VALUES ('{}', '{}', '{}')".
                         format(username, chatid, "F"))
@@ -293,15 +312,10 @@ def add(bot, update, args):
                     except KeyError:
                         risposta(chatid, username + " has been added", bot)
 
-                else:
+            else:
                     risposta(chatid, username +
                              " has already been added", bot)
-            else:
-                risposta(
-                    chatid,
-                    "You have reached your maximum number of permitted followed models, which is "
-                    + str(user_limit_local), bot)
-    except Exception as e:
+      except Exception as e:
         handle_exception(e)
         risposta(
             chatid, username +
