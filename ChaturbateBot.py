@@ -218,7 +218,7 @@ def add(bot, update, args):
         if len(args) != 1:
             risposta(
                 chatid,
-                "You need to specify an username to follow, use the command like /add <b>test</b>", bot, html=True
+                "You need to specify an username to follow, use the command like /add <b>username</b>", bot, html=True
             )
             return
         # not lowercase usernames bug the api calls
