@@ -84,7 +84,7 @@ auto_remove = args["remove"]
 admin_pw = args["admin_password"]
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO,filename=bot_path+"program_log.log")
+                    level=logging.INFO,filename=os.path.join(bot_path,"program_log.log"))
 
 
 # enable sentry if sentry_key is passed as an argument
@@ -212,38 +212,29 @@ def start(bot, update):
 
 
 def add(bot, update, args):
-    logging.info("add")
     chatid = update.message.chat_id
     username_message_list=[]
-    try:
-        if len(args) != 1:
+    if len(args) < 1:
             risposta(
                 chatid,
                 "You need to specify an username to follow, use the command like /add <b>username</b>", bot, html=True
             )
             return
         # not lowercase usernames bug the api calls
-        username = args[0].lower()
-    except Exception as e:
-        risposta(chatid, "An error happened, try again", bot)
-        handle_exception(e)
-        return
-    if "," in username:
-        for splitted_username in username.replace(" ","").split(","):
-            username_message_list.append(splitted_username)
+    if len(args)>1:
+        for username in args:
+            if username!="":
+                username_message_list.append(username.replace(" ","").replace(",",""))
+    # len(args)==0 -> only one username or all in one line
+    elif "," in args[0].lower():
+        for splitted_username in username.replace(" ","").rstrip().split(","):
+            if splitted_username!="":
+             username_message_list.append(splitted_username)
     else:
-        username_message_list.append(username)    
+        username_message_list.append(args[0].lower())
 
-
-
-
-    user_limit_local = user_limit #idk why but python doesn't seem to like args["user_limit"] here :(
-
-    if admin_check(chatid):
-        user_limit_local = 0  # admin has power, bitches
-
-    if len(username_message_list) > user_limit_local or user_limit_local != 0:
-        risposta(chatid,"You are trying to add more usernames than your limit permits, which is "+user_limit_local,bot)
+    if len(username_message_list) > user_limit and admin_check(chatid) == False:
+        risposta(chatid,"You are trying to add more usernames than your limit permits, which is "+str(user_limit),bot)
         return
 
 
@@ -253,7 +244,7 @@ def add(bot, update, args):
      
     for username in username_message_list:
       try:   
-        
+        logging.info("add")
         target = "https://en.chaturbate.com/api/chatvideocontext/" + username    
         response = requests.get(target, headers=headers)
         # server response + json parsing
