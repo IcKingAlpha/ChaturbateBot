@@ -227,13 +227,31 @@ def add(bot, update, args):
                 username_message_list.append(username.replace(" ","").replace(",",""))
     # len(args)==0 -> only one username or all in one line
     elif "," in args[0].lower():
-        for splitted_username in username.replace(" ","").rstrip().split(","):
+        for splitted_username in args[0].lower().replace(" ","").rstrip().split(","):
             if splitted_username!="":
              username_message_list.append(splitted_username)
     else:
         username_message_list.append(args[0].lower())
+    
 
-    if len(username_message_list) > user_limit and admin_check(chatid) == False:
+
+    usernames_in_database = []
+    db = sqlite3.connect(bot_path + '/database.db')
+    cursor = db.cursor()
+    # obtain present usernames
+    sql = "SELECT * FROM CHATURBATE WHERE CHAT_ID='{}'".format(
+        chatid)
+    try:
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        for row in results:
+            usernames_in_database.append(row[0])
+    except Exception as e:
+        handle_exception(e)
+    finally:
+        db.close()
+
+    if len(usernames_in_database)+len(username_message_list) > user_limit and admin_check(chatid) == False:
         risposta(chatid,"You are trying to add more usernames than your limit permits, which is "+str(user_limit),bot)
         return
 
