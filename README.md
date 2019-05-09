@@ -20,8 +20,10 @@ Requirements written in requirements.txt
 Setup
 =====
 
-Install requirements in the main folder, run ```pip install -r requirements.txt```
-in the main folder.
+Install requirements in the main folder with
+```sh
+$ pip install -r requirements.txt 
+```
 
 Get a telegram bot api key, you need it in order to be able to communicate with
 telegram’s servers.
@@ -32,4 +34,6 @@ here <http://t.me/chaturbatealertsbot>
 Running
 =======
 
-```python3 ChaturbateBot.py -k yourbotapikey OPTIONAL ARGUMENTS```
+```sh 
+$ python3 ChaturbateBot.py -k yourbotapikey OPTIONAL ARGUMENTS
+```
