@@ -248,7 +248,8 @@ def add(bot, update, args):
     finally:
         db.close()
 
-    if len(usernames_in_database)+len(username_message_list) > user_limit and admin_check(chatid) == False:
+    print(user_limit)    
+    if len(usernames_in_database)+len(username_message_list) > user_limit and (admin_check(chatid) == False != user_limit != 0):
         risposta(chatid,"You are trying to add more usernames than your limit permits, which is "+str(user_limit),bot)
         return
 
