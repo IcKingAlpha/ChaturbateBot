@@ -247,8 +247,7 @@ def add(bot, update, args):
         handle_exception(e)
     finally:
         db.close()
-
-    print(user_limit)    
+    
     if len(usernames_in_database)+len(username_message_list) > user_limit and (admin_check(chatid) == False != user_limit != 0):
         risposta(chatid,"You are trying to add more usernames than your limit permits, which is "+str(user_limit),bot)
         return
@@ -658,7 +657,6 @@ dispatcher.add_handler(list_handler)
 authorize_admin_handler = CommandHandler(
     'authorize_admin', authorize_admin, pass_args=True)
 dispatcher.add_handler(authorize_admin_handler)
-
 
 send_message_to_everyone_handler = CommandHandler(
     'send_message_to_everyone', send_message_to_everyone, pass_args=True)
