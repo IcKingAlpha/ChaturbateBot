@@ -525,7 +525,7 @@ def check_online_status():
 
 
         # Threaded function for queue processing.
-        def crawl(q, response_list):
+        def crawl(q, response_dict):
             while not q.empty():
                 work = q.get()                      #fetch new work from the Queue
                 try:
@@ -535,22 +535,22 @@ def check_online_status():
                     response = requests.get(target, headers=headers)
                     response_json = json.loads(response.content)
                     
-                    response_list[work[1]] = response_json
+                    response_dict[work[1]] = response_json #response[username]=status
 
 
                 except (json.JSONDecodeError,ConnectionError) as e:
                     handle_exception(e)
-                    response_list[work[1]] = "error"              
+                    response_dict[work[1]] = "error"              
                 except Exception as e:
                     handle_exception(e)
-                    response_list[work[1]] = "error"
+                    response_dict[work[1]] = "error"
                 #signal to the queue that task has been processed
                 q.task_done()
             return True
 
         q = Queue(maxsize=0)
         #Populating Queue with tasks
-        response_list = {}
+        response_dict = {}
 
         #load up the queue with the username_list to fetch and the index for each job (as a tuple):
         for i in range(len(username_list)):
@@ -560,7 +560,7 @@ def check_online_status():
         #Starting worker threads on queue processing
         for i in range(http_threads):
             
-            worker = threading.Thread(target=crawl, args=(q,response_list), daemon=True)
+            worker = threading.Thread(target=crawl, args=(q,response_dict), daemon=True)
             worker.start()
             time.sleep(wait_time)  #avoid server spamming by time-limiting the start of requests
         
@@ -572,7 +572,7 @@ def check_online_status():
         
 
         for username in username_list:
-            response=response_list[username]
+            response=response_dict[username]
             
             try:
 
@@ -601,7 +601,7 @@ def check_online_status():
 
                 elif response != "error":
                     if "401" in str(response['status']):
-                        if "This room requires a password" in str(response['detail']):
+                        if "This room requires a password" in str(response['detail']): #assuming the user knows the password
 
                             if (online_dict[username] == "F"):
 
