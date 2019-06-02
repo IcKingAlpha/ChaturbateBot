@@ -13,7 +13,7 @@ chaturbate.com
 Requirements
 ============
 
-Python3 (3.5+ preferred)
+Python3 >= 3.6
 
 Requirements written in requirements.txt
 

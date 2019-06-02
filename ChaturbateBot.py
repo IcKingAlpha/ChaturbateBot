@@ -84,7 +84,7 @@ auto_remove = args["remove"]
 admin_pw = args["admin_password"]
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO,filename=bot_path+"program_log.log")
+                    level=logging.INFO,filename=os.path.join(bot_path,"program_log.log"))
 
 
 # enable sentry if sentry_key is passed as an argument
@@ -157,10 +157,8 @@ def risposta(sender, messaggio, bot, html=False):
             bot.send_message(chat_id=sender, text=messaggio)
     except Unauthorized:
         if auto_remove == True:
-            logging.info(
-                "{} blocked the bot, he's been removed from the database".format(sender))
-            exec_query(
-                "DELETE FROM CHATURBATE WHERE CHAT_ID='{}'".format(sender))
+            logging.info(f"{sender} blocked the bot, he's been removed from the database")
+            exec_query(f"DELETE FROM CHATURBATE WHERE CHAT_ID='{sender}'")
     except Exception as e:
         handle_exception(e)
 
@@ -212,26 +210,57 @@ def start(bot, update):
 
 
 def add(bot, update, args):
-    logging.info("add")
     chatid = update.message.chat_id
-    try:
-        if len(args) != 1:
+    username_message_list=[]
+    if len(args) < 1:
             risposta(
                 chatid,
-                "You need to specify an username to follow, use the command like /add <b>test</b>", bot, html=True
+                "You need to specify an username to follow, use the command like /add <b>username</b>\n You can also add multiple users at the same time by separating them using a comma, like /add <b>username1</b>,<b>username2</b>", bot, html=True
             )
             return
         # not lowercase usernames bug the api calls
-        username = args[0].lower()
-    except Exception as e:
-        risposta(chatid, "An error happened, try again", bot)
-        handle_exception(e)
-        return
-    try:
-        target = "https://en.chaturbate.com/api/chatvideocontext/" + username
+    if len(args)>1:
+        for username in args:
+            if username!="":
+                username_message_list.append(username.replace(" ","").replace(",",""))
+    # len(args)==0 -> only one username or all in one line
+    elif "," in args[0].lower():
+        for splitted_username in args[0].lower().replace(" ","").rstrip().split(","):
+            if splitted_username!="":
+             username_message_list.append(splitted_username)
+    else:
+        username_message_list.append(args[0].lower())
+    
 
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
+
+    usernames_in_database = []
+    db = sqlite3.connect(bot_path + '/database.db')
+    cursor = db.cursor()
+    # obtain present usernames
+    sql = f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'"
+    try:
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        for row in results:
+            usernames_in_database.append(row[0])
+    except Exception as e:
+        handle_exception(e)
+    finally:
+        db.close()
+    
+    if len(usernames_in_database)+len(username_message_list) > user_limit and (admin_check(chatid) == False != user_limit != 0):
+        risposta(chatid,"You are trying to add more usernames than your limit permits, which is "+str(user_limit),bot)
+        return
+
+
+
+
+    headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
+     
+    for username in username_message_list:
+      try:   
+        logging.info("add")
+        target = "https://en.chaturbate.com/api/chatvideocontext/" + username    
         response = requests.get(target, headers=headers)
         # server response + json parsing
         response_json = json.loads(response.content)
@@ -262,8 +291,7 @@ def add(bot, update, args):
             cursor = db.cursor()
 
             # obtain present usernames
-            sql = "SELECT * FROM CHATURBATE WHERE CHAT_ID='{}'".format(
-                chatid)
+            sql = f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'"
             try:
                 cursor.execute(sql)
                 results = cursor.fetchall()
@@ -274,17 +302,12 @@ def add(bot, update, args):
             finally:
                 db.close()
 
-            user_limit_local = user_limit
-
-            if admin_check(chatid):
-                user_limit_local = 0  # admin has power, bitches
+            
 
             # 0 is unlimited usernames
-            if len(username_list) < user_limit_local or user_limit_local == 0:
-                if username not in username_list:
+            if username not in username_list:
                     exec_query(
-                        "INSERT INTO CHATURBATE VALUES ('{}', '{}', '{}')".
-                        format(username, chatid, "F"))
+                        f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
                     try:
                         status = str(response_json['detail'])
                         if "This room requires a password" in status:
@@ -293,15 +316,10 @@ def add(bot, update, args):
                     except KeyError:
                         risposta(chatid, username + " has been added", bot)
 
-                else:
+            else:
                     risposta(chatid, username +
                              " has already been added", bot)
-            else:
-                risposta(
-                    chatid,
-                    "You have reached your maximum number of permitted followed models, which is "
-                    + str(user_limit_local), bot)
-    except Exception as e:
+      except Exception as e:
         handle_exception(e)
         risposta(
             chatid, username +
@@ -326,8 +344,7 @@ def remove(bot, update, args):
         )
         return
 
-    sql = "SELECT * FROM CHATURBATE WHERE USERNAME='{}' AND CHAT_ID='{}'".format(
-        username, chatid)
+    sql = f"SELECT * FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'"
     try:
         db = sqlite3.connect(bot_path + '/database.db')
         cursor = db.cursor()
@@ -342,13 +359,12 @@ def remove(bot, update, args):
 
     if username == "all":
         exec_query(
-            "DELETE FROM CHATURBATE WHERE CHAT_ID='{}'".format(chatid))
+           f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
         risposta(chatid, "All usernames have been removed", bot)
 
     elif username in username_list:  # this could have a better implementation but it works
         exec_query(
-            "DELETE FROM CHATURBATE WHERE USERNAME='{}' AND CHAT_ID='{}'".
-            format(username, chatid))
+            f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
         risposta(chatid, username + " has been removed", bot)
 
     else:
@@ -365,7 +381,7 @@ def list_command(bot, update):
     followed_users = ""
     db = sqlite3.connect(bot_path + '/database.db')
     cursor = db.cursor()
-    sql = "SELECT * FROM CHATURBATE WHERE CHAT_ID='{}'".format(chatid)
+    sql = f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'"
 
     try:
         cursor.execute(sql)
@@ -393,7 +409,7 @@ def list_command(bot, update):
         risposta(chatid, "You aren't following any user", bot)
     else:
         risposta(
-            chatid, "You are currently following these {} users:\n".format(len(username_list)) +
+            chatid, f"You are currently following these {len(username_list)} users:\n" +
             followed_users, bot, html=True)
 
 # end of normal funcionts
@@ -416,7 +432,7 @@ def authorize_admin(bot, update, args):
         )
         return
     if args[0] == admin_pw and admin_check(chatid) == False:
-        exec_query("""INSERT INTO ADMIN VALUES ({})""".format(chatid))
+        exec_query(f"""INSERT INTO ADMIN VALUES ({chatid})""")
         risposta(chatid, "Admin abilitato", bot)
     else:
         risposta(chatid, "la password è errata", bot)
@@ -493,7 +509,7 @@ def check_online_status():
         # obtain chatid
         for username in username_list:
                 chatid_list = []
-                sql = "SELECT CHAT_ID FROM CHATURBATE WHERE USERNAME='{}'".format(username)
+                sql = f"SELECT CHAT_ID FROM CHATURBATE WHERE USERNAME='{username}'"
                 try:
                             db = sqlite3.connect(bot_path + '/database.db')
                             cursor = db.cursor()
@@ -509,7 +525,7 @@ def check_online_status():
 
 
         # Threaded function for queue processing.
-        def crawl(q, response_list):
+        def crawl(q, response_dict):
             while not q.empty():
                 work = q.get()                      #fetch new work from the Queue
                 try:
@@ -519,22 +535,22 @@ def check_online_status():
                     response = requests.get(target, headers=headers)
                     response_json = json.loads(response.content)
                     
-                    response_list[work[1]] = response_json
+                    response_dict[work[1]] = response_json #response[username]=status
 
 
                 except (json.JSONDecodeError,ConnectionError) as e:
                     handle_exception(e)
-                    response_list[work[1]] = "error"              
+                    response_dict[work[1]] = "error"              
                 except Exception as e:
                     handle_exception(e)
-                    response_list[work[1]] = "error"
+                    response_dict[work[1]] = "error"
                 #signal to the queue that task has been processed
                 q.task_done()
             return True
 
         q = Queue(maxsize=0)
         #Populating Queue with tasks
-        response_list = {}
+        response_dict = {}
 
         #load up the queue with the username_list to fetch and the index for each job (as a tuple):
         for i in range(len(username_list)):
@@ -544,7 +560,7 @@ def check_online_status():
         #Starting worker threads on queue processing
         for i in range(http_threads):
             
-            worker = threading.Thread(target=crawl, args=(q,response_list), daemon=True)
+            worker = threading.Thread(target=crawl, args=(q,response_dict), daemon=True)
             worker.start()
             time.sleep(wait_time)  #avoid server spamming by time-limiting the start of requests
         
@@ -556,7 +572,7 @@ def check_online_status():
         
 
         for username in username_list:
-            response=response_list[username]
+            response=response_dict[username]
             
             try:
 
@@ -566,8 +582,7 @@ def check_online_status():
 
                         if online_dict[username] == "T" :
                             exec_query(
-                                "UPDATE CHATURBATE SET ONLINE='{}' WHERE USERNAME='{}'"
-                                .format("F", username))
+                                f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}'")
 
                             for y in chatid_dict[username]:
                                 risposta(y, username + " is now offline", bot)
@@ -576,8 +591,7 @@ def check_online_status():
                     elif online_dict[username] == "F":
 
                             exec_query(
-                                "UPDATE CHATURBATE SET ONLINE='{}' WHERE USERNAME='{}'"
-                                .format("T", username))
+                                f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
 
                             for y in chatid_dict[username]:    
                                 risposta(y, username +" is now online! You can watch the live here: http://en.chaturbate.com/"+ username, bot)
@@ -587,19 +601,17 @@ def check_online_status():
 
                 elif response != "error":
                     if "401" in str(response['status']):
-                        if "This room requires a password" in str(response['detail']):
+                        if "This room requires a password" in str(response['detail']): #assuming the user knows the password
 
                             if (online_dict[username] == "F"):
 
-                                exec_query("UPDATE CHATURBATE SET ONLINE='{}' WHERE USERNAME='{}'".format("T", username))
+                                exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
                                 
                                 for y in chatid_dict[username]:    
                                     risposta(y, username +" is now online! You can watch the live here: http://en.chaturbate.com/"+ username, bot)
 
                         if "Room is deleted" in str(response['detail']):
-                            exec_query(
-                                "DELETE FROM CHATURBATE WHERE USERNAME='{}'".
-                                format(username))
+                            exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, username +" has been removed because room has been deleted", bot)
                             logging.info(
@@ -610,8 +622,7 @@ def check_online_status():
                         if "This room has been banned" in str(
                                 response['detail']):
                             exec_query(
-                                "DELETE FROM CHATURBATE WHERE USERNAME='{}'".
-                                format(username))
+                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, username +" has been removed because room has been deleted", bot)
                             logging.info(username+
@@ -620,8 +631,7 @@ def check_online_status():
                         if "This room is not available to your region or gender." in str(
                                 response['detail']):
                             exec_query(
-                                "DELETE FROM CHATURBATE WHERE USERNAME='{}'".
-                                format(username))
+                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, username +" has been removed because of geoblocking, I'm going to try to fix this soon", bot)
                             logging.info(username+
@@ -647,7 +657,6 @@ dispatcher.add_handler(list_handler)
 authorize_admin_handler = CommandHandler(
     'authorize_admin', authorize_admin, pass_args=True)
 dispatcher.add_handler(authorize_admin_handler)
-
 
 send_message_to_everyone_handler = CommandHandler(
     'send_message_to_everyone', send_message_to_everyone, pass_args=True)
