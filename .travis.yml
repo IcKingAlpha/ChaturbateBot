@@ -1,6 +1,7 @@
 language: python
 python:
   - "3.6"
+  - "3.7"
 allow_failures:
     - python: nightly
     - python: 3.8-dev
@@ -10,13 +11,3 @@ install:
 # command to run tests
 script:
   - python3 ChaturbateBot.py -h
-
-#travis can't fucking fix their servers 
-matrix:
-  include:
-    - python: 3.7
-      dist: xenial
-      sudo: true
-    - python: 3.8
-      dist: xenial
-      sudo: true
