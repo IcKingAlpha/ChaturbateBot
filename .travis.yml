@@ -1,4 +1,6 @@
 language: python
+sudo: required
+dist: xenial
 python:
   - "3.6"
   - "3.7"
@@ -11,3 +13,4 @@ install:
 # command to run tests
 script:
   - python3 ChaturbateBot.py -h
+
