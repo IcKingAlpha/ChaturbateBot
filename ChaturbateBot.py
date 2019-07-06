@@ -92,7 +92,7 @@ if sentry_key != "":
     import sentry_sdk
     sentry_sdk.init(sentry_key)
 
-    def handle_exception(e):
+    def handle_exception(e: Exception) -> None:
         try:
          sentry_sdk.capture_exception()
         except Exception as e:
@@ -101,11 +101,11 @@ if sentry_key != "":
 
 else:
 
-    def handle_exception(e):
+    def handle_exception(e: Exception) -> None:
         logging.error(e,exc_info=True)
 
 
-def exec_query(query):
+def exec_query(query: str) -> None:
     """Executes a db query
 
     Parameters:
@@ -132,7 +132,7 @@ def exec_query(query):
     db.close()
 
 
-def risposta(sender, messaggio, bot, html=False):
+def risposta(sender: str, messaggio: str, bot, html: str=False) -> None:
     """Sends a message to a telegram user
 
     Parameters:
@@ -155,7 +155,7 @@ def risposta(sender, messaggio, bot, html=False):
                              parse_mode=telegram.ParseMode.HTML)
         else:
             bot.send_message(chat_id=sender, text=messaggio)
-    except Unauthorized:
+    except Unauthorized: #user blocked the bot
         if auto_remove == True:
             logging.info(f"{sender} blocked the bot, he's been removed from the database")
             exec_query(f"DELETE FROM CHATURBATE WHERE CHAT_ID='{sender}'")
@@ -163,13 +163,12 @@ def risposta(sender, messaggio, bot, html=False):
         handle_exception(e)
 
 
-def admin_check(chatid):
+def admin_check(chatid: str) -> bool:
     """Checks if a chatid is present in the admin database
 
     Parameters:
 
     chatid (str): The chat id of the user who will be checked
-
 
     Returns:
     bool: the logic value of the check
@@ -199,17 +198,17 @@ def admin_check(chatid):
 
 
 
-# normal functions
+#region normal functions
 
 
-def start(bot, update):
+def start(bot, update) -> None:
     risposta(
         update.message.chat.id,
         "/add username to add an username to check \n/remove username to remove an username\n(you can use /remove <b>all</b> to remove all models at once) \n/list to see which users you are currently following", bot, html=True
     )
 
 
-def add(bot, update, args):
+def add(bot, update, args) -> None:
     chatid = update.message.chat_id
     username_message_list=[]
     if len(args) < 1:
@@ -327,7 +326,7 @@ def add(bot, update, args):
         )
 
 
-def remove(bot, update, args):
+def remove(bot, update, args) -> None:
     logging.info("remove")
     chatid = update.message.chat.id
     username_list = []
@@ -373,7 +372,7 @@ def remove(bot, update, args):
             "You aren't following the username you have tried to remove", bot)
 
 
-def list_command(bot, update):
+def list_command(bot, update) -> None:
     chatid = update.message.chat.id
     username_list = []
     online_list = []
@@ -412,10 +411,11 @@ def list_command(bot, update):
             chatid, f"You are currently following these {len(username_list)} users:\n" +
             followed_users, bot, html=True)
 
-# end of normal funcionts
+#endregion
 
+#region admin functions
 
-def authorize_admin(bot, update, args):
+def authorize_admin(bot, update, args) -> None:
 
     logging.info("admin-auth")
     chatid = update.message.chat_id
@@ -438,7 +438,7 @@ def authorize_admin(bot, update, args):
         risposta(chatid, "la password è errata", bot)
 
 
-def send_message_to_everyone(bot, update, args):
+def send_message_to_everyone(bot, update, args) -> None:
     chatid = update.message.chat.id
     message = ""
 
@@ -468,12 +468,12 @@ def send_message_to_everyone(bot, update, args):
     for x in chatid_list:
         risposta(x, message, bot)
 
-# end of admin functions
 
+#endregion
 
-# threads
+#region threads
 
-def check_online_status():
+def check_online_status() -> None:
     global updater
     bot = updater.bot
     while (1):
@@ -661,6 +661,8 @@ dispatcher.add_handler(authorize_admin_handler)
 send_message_to_everyone_handler = CommandHandler(
     'send_message_to_everyone', send_message_to_everyone, pass_args=True)
 dispatcher.add_handler(send_message_to_everyone_handler)
+
+#endregion
 
 # default table creation
 exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
