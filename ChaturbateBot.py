@@ -540,10 +540,9 @@ def check_online_status() -> None:
                             logging.info(username.lower()+" is not a model anymore, removing from db")
                             exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             response_dict[username] = "error" #avoid processing the failed model
-
-                        response_json = json.loads(response.content)
-                        
-                        response_dict[username] = response_json #response[username]=status
+                        else:
+                            response_json = json.loads(response.content)
+                            response_dict[username] = response_json #response[username]=status
     
     
                     except (json.JSONDecodeError,ConnectionError) as e:
