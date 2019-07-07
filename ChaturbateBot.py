@@ -535,6 +535,12 @@ def check_online_status() -> None:
                         headers = {
                             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
                         response = requests.get(target, headers=headers)
+
+                        if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response: #check if models still exists
+                            logging.info(username.lower()+" is not a model anymore, removing from db")
+                            exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                            response_dict[username] = "error" #avoid processing the failed model
+
                         response_json = json.loads(response.content)
                         
                         response_dict[username] = response_json #response[username]=status
@@ -543,7 +549,7 @@ def check_online_status() -> None:
                     except (json.JSONDecodeError,ConnectionError) as e:
                         handle_exception(e)
                         logging.info(username.lower()+" has failed to connect on attempt "+str(attempt))
-                        response_dict[username] = "error"
+                        
                         time.sleep(1) #sleep and retry              
                     except Exception as e:
                         handle_exception(e)
