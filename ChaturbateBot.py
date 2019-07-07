@@ -542,7 +542,7 @@ def check_online_status() -> None:
     
                     except (json.JSONDecodeError,ConnectionError) as e:
                         handle_exception(e)
-                        logging.info(username.lower()+" has failed to connect on attempt "+attempt)
+                        logging.info(username.lower()+" has failed to connect on attempt "+str(attempt))
                         response_dict[username] = "error"
                         time.sleep(1) #sleep and retry              
                     except Exception as e:
