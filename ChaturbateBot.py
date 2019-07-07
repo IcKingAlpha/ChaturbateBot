@@ -528,23 +528,29 @@ def check_online_status() -> None:
         def crawl(q, response_dict):
             while not q.empty():
                 work = q.get()                      #fetch new work from the Queue
-                try:
-                    target = "https://en.chaturbate.com/api/chatvideocontext/" + work[1].lower()
-                    headers = {
-                        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
-                    response = requests.get(target, headers=headers)
-                    response_json = json.loads(response.content)
-                    
-                    response_dict[work[1]] = response_json #response[username]=status
-
-
-                except (json.JSONDecodeError,ConnectionError) as e:
-                    handle_exception(e)
-                    response_dict[work[1]] = "error"              
-                except Exception as e:
-                    handle_exception(e)
-                    response_dict[work[1]] = "error"
-                #signal to the queue that task has been processed
+                for attempt in range(5): #try to connect 5 times as there are a lot of network disruptions
+                    try:
+                        username=work[1]
+                        target = "https://en.chaturbate.com/api/chatvideocontext/" + username.lower()
+                        headers = {
+                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
+                        response = requests.get(target, headers=headers)
+                        response_json = json.loads(response.content)
+                        
+                        response_dict[username] = response_json #response[username]=status
+    
+    
+                    except (json.JSONDecodeError,ConnectionError) as e:
+                        handle_exception(e)
+                        logging.error(username.lower+" has failed to connect on attempt "+attempt,exc_info=True)
+                        response_dict[username] = "error"
+                        time.sleep(1) #sleep and retry              
+                    except Exception as e:
+                        handle_exception(e)
+                        response_dict[username] = "error"
+                    #signal to the queue that task has been processed
+                    else:
+                        break
                 q.task_done()
             return True
 
