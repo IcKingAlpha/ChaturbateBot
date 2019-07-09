@@ -9,7 +9,6 @@ import threading
 import time
 import urllib.request
 import requests
-import datetime
 from queue import Queue
 
 from concurrent.futures import ThreadPoolExecutor
@@ -69,7 +68,7 @@ ap.add_argument(
     required=False,
     type=str,
     default="",
-    help="The password to authorize yourself as an admin, disabled by default")
+    help="The password for the bot admin commands, disabled by default")
 args = vars(ap.parse_args())
 
 
@@ -230,8 +229,6 @@ def add(bot, update, args) -> None:
     else:
         username_message_list.append(args[0].lower())
     
-    username_message_list=list(dict.fromkeys(username_message_list)) #remove duplicate usernames
-    
 
 
     usernames_in_database = []
@@ -248,66 +245,88 @@ def add(bot, update, args) -> None:
         handle_exception(e)
     finally:
         db.close()
-
-
-    # 0 is unlimited usernames
+    
     if len(usernames_in_database)+len(username_message_list) > user_limit and (admin_check(chatid) == False != user_limit != 0):
         risposta(chatid,"You are trying to add more usernames than your limit permits, which is "+str(user_limit),bot)
         return
 
+
+
+
     headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
      
     for username in username_message_list:
-        try:
-            target = "https://en.chaturbate.com/api/chatvideocontext/" + username    
-            response = requests.get(target, headers=headers)
+      try:   
+        logging.info("add")
+        target = "https://en.chaturbate.com/api/chatvideocontext/" + username    
+        response = requests.get(target, headers=headers)
+        # server response + json parsing
+        response_json = json.loads(response.content)
 
-            #check if the response can be actually be parsed
-            if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content: #check if models still exists
-                risposta(chatid, f"{username} was not added because it doesn't exist", bot)
-                return
+        # check for not existing models and errors
+        if (("status" in response_json) and ("401" in str(response_json['status'])) and ("This room requires a password" not in str(response_json['detail']))):
+
+            if "Room is deleted" in str(response_json['detail']):
+
+                risposta(
+                    chatid, username +
+                    " has not been added because room has been deleted", bot
+                )
+                logging.info(
+                    username+
+                    " has not been added because room has been deleted")
+            if "This room has been banned" in str(response_json['detail']):
+
+                risposta(
+                    chatid, username +
+                    " has not been added because has been banned", bot)
+                logging.info(username+
+                      " has not been added because has been banned")
+
+        else:
+            username_list = []
+            db = sqlite3.connect(bot_path + '/database.db')
+            cursor = db.cursor()
+
+            # obtain present usernames
+            sql = f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'"
+            try:
+                cursor.execute(sql)
+                results = cursor.fetchall()
+                for row in results:
+                    username_list.append(row[0])
+            except Exception as e:
+                handle_exception(e)
+            finally:
+                db.close()
+
+            
+
+            # 0 is unlimited usernames
+            if username not in username_list:
+                    exec_query(
+                        f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
+                    try:
+                        status = str(response_json['detail'])
+                        if "This room requires a password" in status:
+                            risposta(
+                                chatid, username + " uses a password for his/her room, it has been added but tracking could be unstable", bot)
+                    except KeyError:
+                        risposta(chatid, username + " has been added", bot)
+
             else:
-                response_json = json.loads(response.content)
-
-            # check for not existing models and errors
-            if (("status" in response_json) and ("401" in str(response_json['status'])) and ("This room requires a password" not in str(response_json['detail']))):
-    
-                if "Room is deleted" in str(response_json['detail']):
-    
-                    risposta(
-                        chatid, username +
-                        " has not been added because room has been deleted", bot
-                    )
-                    logging.info(
-                        username+
-                        " has not been added because room has been deleted")
-                if "This room has been banned" in str(response_json['detail']):
-    
-                    risposta(
-                        chatid, username +
-                        " has not been added because has been banned", bot)
-                    logging.info(username+
-                          " has not been added because has been banned")
-
-            else:
-                if username not in usernames_in_database:
-                        exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
-                        if 'detail' in response_json:
-                            if "This room requires a password" in str(response_json['detail']):
-                                risposta(chatid, username + " uses a password for his/her room, it has been added but tracking could be unstable", bot)
-                        else:
-                            risposta(chatid, username + " has been added", bot)
-                            logging.info(f'{chatid} added {username}')
-                else:
-                    risposta(chatid, f"{username} has already been added", bot)
-
-        except Exception as e:
-            handle_exception(e)
-            risposta(chatid, f"{username} was not added because an error happened", bot)
+                    risposta(chatid, username +
+                             " has already been added", bot)
+      except Exception as e:
+        handle_exception(e)
+        risposta(
+            chatid, username +
+            " was not added because it doesn't exist or it has been banned", bot
+        )
 
 
 def remove(bot, update, args) -> None:
-    
+    logging.info("remove")
     chatid = update.message.chat.id
     username_message_list = []
     usernames_in_database=[]
@@ -330,9 +349,6 @@ def remove(bot, update, args) -> None:
     else:
         username_message_list.append(args[0].lower())
     
-
-    username_message_list=list(dict.fromkeys(username_message_list)) #remove duplicate usernames
-
     db = sqlite3.connect(bot_path + '/database.db')
     cursor = db.cursor()
     # obtain usernames in the database
@@ -351,19 +367,13 @@ def remove(bot, update, args) -> None:
         exec_query(
            f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
         risposta(chatid, "All usernames have been removed", bot)
-
-        logging.info(f'{chatid} removed all')
-
     else:
         for username in username_message_list:
             if username in usernames_in_database:
                 exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
                 risposta(chatid, f"{username} has been removed", bot)
-                logging.info(f'{chatid} removed {username}')
             else:
-                risposta(chatid,f"You aren't following {username}", bot)
-                logging.info(f'{chatid} tried to remove {username}')        
-
+                risposta(chatid,f"You aren't following {username}", bot)        
 
 
 def list_command(bot, update) -> None:
@@ -411,6 +421,7 @@ def list_command(bot, update) -> None:
 
 def authorize_admin(bot, update, args) -> None:
 
+    logging.info("admin-auth")
     chatid = update.message.chat_id
     if len(args) != 1:
         risposta(
@@ -424,30 +435,22 @@ def authorize_admin(bot, update, args) -> None:
             "The admin is disabled, check your telegram bot configuration", bot
         )
         return
-    if admin_check(chatid):
-        risposta(chatid, "You already are an admin", bot)
-    elif args[0] == admin_pw:
+    if args[0] == admin_pw and admin_check(chatid) == False:
         exec_query(f"""INSERT INTO ADMIN VALUES ({chatid})""")
-        risposta(chatid, "Admin enabled", bot)
-        risposta(chatid, "Remember to disable the --admin-password if you want to avoid people trying to bruteforce this command", bot)
-        logging.info(f"{chatid} got admin authorization")
+        risposta(chatid, "Admin abilitato", bot)
     else:
-        risposta(chatid, "The password is wrong", bot)
+        risposta(chatid, "la password è errata", bot)
 
 
 def send_message_to_everyone(bot, update, args) -> None:
     chatid = update.message.chat.id
+    message = ""
 
     if admin_check(chatid) == False:
-        risposta(chatid, "You're not authorized to do this", bot)
+        risposta(chatid, "non sei autorizzato", bot)
         return
 
     chatid_list = []
-    message = ""
-    start_time=datetime.datetime.now()
-
-
-    logging.info(f"{chatid} started sending a message to everyone")
 
     sql = "SELECT DISTINCT CHAT_ID FROM CHATURBATE"
     try:
@@ -468,7 +471,6 @@ def send_message_to_everyone(bot, update, args) -> None:
 
     for x in chatid_list:
         risposta(x, message, bot)
-    logging.info(f"{chatid} finished sending a message to everyone, took {(datetime.datetime.now()-start_time).total_seconds()} seconds")
 
 
 #endregion
@@ -546,16 +548,14 @@ def check_online_status() -> None:
                             response_json = json.loads(response.content)
                             response_dict[username] = response_json #response[username]=status
     
-
-    
                     except (json.JSONDecodeError,ConnectionError) as e:
                         handle_exception(e)
                         logging.info(username.lower()+" has failed to connect on attempt "+str(attempt))
+
                         time.sleep(1) #sleep and retry              
                     except Exception as e:
                         handle_exception(e)
                         response_dict[username] = "error"
-                    
                     else:
                         break
                 #signal to the queue that task has been processed
