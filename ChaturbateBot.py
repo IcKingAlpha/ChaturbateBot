@@ -261,9 +261,14 @@ def add(bot, update, args) -> None:
         try:
             target = "https://en.chaturbate.com/api/chatvideocontext/" + username    
             response = requests.get(target, headers=headers)
-            # server response + json parsing
-            response_json = json.loads(response.content)
-    
+
+            #check if the response can be actually be parsed
+            if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content: #check if models still exists
+                risposta(chatid, f"{username} was not added because it doesn't exist", bot)
+                return
+            else:
+                response_json = json.loads(response.content)
+
             # check for not existing models and errors
             if (("status" in response_json) and ("401" in str(response_json['status'])) and ("This room requires a password" not in str(response_json['detail']))):
     
@@ -298,7 +303,7 @@ def add(bot, update, args) -> None:
 
         except Exception as e:
             handle_exception(e)
-            risposta(chatid, f"{username} was not added because it doesn't exist or it has been banned", bot)
+            risposta(chatid, f"{username} was not added because an error happened", bot)
 
 
 def remove(bot, update, args) -> None:
