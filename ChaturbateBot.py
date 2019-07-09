@@ -174,7 +174,7 @@ def admin_check(chatid: str) -> bool:
     chatid (str): The chat id of the user who will be checked
 
     Returns:
-    bool: the logic value of the check
+    bool: The logic value of the check
 
     """
 
@@ -210,6 +210,36 @@ def start(bot, update) -> None:
         "/add username to add an username to check \n/remove username to remove an username\n(you can use /remove <b>all</b> to remove all models at once) \n/list to see which users you are currently following", bot, html=True
     )
 
+def is_model_viewable(model: str) -> bool:
+    """
+    Checks if you can see the model live (without any privilege)
+
+    Parameters:
+
+    model (str): The model's name
+
+    Returns:
+    bool: The logic value of the check
+    """
+    target = f"https://en.chaturbate.com/api/chatvideocontext/{model}"
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
+    response = requests.get(target, headers=headers)
+
+    if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content: #check if models still exists
+        return False
+    else:
+        response = json.loads(response.content)
+
+    if ("status" not in response and response != "error"):
+        if (response["room_status"] == "offline" or response["room_status"] == "away" or response["room_status"] == "private" or response["room_status"]=="hidden"):
+            return False
+    elif ("status" in response): #avoid keyerror?
+        if response["status"]==401: 
+            return False
+    elif response == "error":
+        return False
+    return True
 
 def add(bot, update, args) -> None:
     chatid = update.message.chat_id
@@ -409,16 +439,20 @@ def stream_image(bot, update, args) -> None:
         return
 
     username=args[0].lower()
+    if is_model_viewable(username):
+        model_image=Image.open(BytesIO(requests.get(f'https://roomimg.stream.highwebmedia.com/ri/{username}.jpg').content))
+        bio = BytesIO()
+        bio.name = 'image.jpeg'
+        model_image.save(bio, 'JPEG')
+        bio.seek(0)
+    
+        bot.send_chat_action(chatid, action="upload_photo")
+        bot.send_photo(chatid, bio)
+        logging.info(f'{chatid} viewed {username} stream image')
+    else:
+        risposta(chatid,f"The model {username} is offline, private or does not exist",bot)
+        logging.info(f'{chatid} failed to view {username} stream image')
 
-    model_image=Image.open(BytesIO(requests.get(f'https://roomimg.stream.highwebmedia.com/ri/{username}.jpg').content))
-    bio = BytesIO()
-    bio.name = 'image.jpeg'
-    model_image.save(bio, 'JPEG')
-    bio.seek(0)
-
-    bot.send_chat_action(chatid, action="upload_photo")
-    bot.send_photo(chatid, bio)
-    logging.info(f'{chatid} viewed {username} stream image')
 
 #endregion
 
