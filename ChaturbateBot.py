@@ -133,7 +133,7 @@ def exec_query(query: str) -> None:
     db.close()
 
 
-def risposta(sender: str, messaggio: str, bot, html: str=False) -> None:
+def risposta(sender: str, messaggio: str, bot, html: bool=False, disable_webpage_preview: bool = False) -> None:
     """Sends a message to a telegram user
 
     Parameters:
@@ -144,7 +144,9 @@ def risposta(sender: str, messaggio: str, bot, html: str=False) -> None:
 
     bot: telegram bot instance
 
-    html (str): if html markdown should be enabled in the message
+    html (bool): Enable html markdown parsing in the message
+
+    disable_webpage_preview (bool): Disable webpage preview in links
 
 
     """
@@ -153,9 +155,9 @@ def risposta(sender: str, messaggio: str, bot, html: str=False) -> None:
         bot.send_chat_action(chat_id=sender, action="typing")
         if html == True:
             bot.send_message(chat_id=sender, text=messaggio,
-                             parse_mode=telegram.ParseMode.HTML)
+                             parse_mode=telegram.ParseMode.HTML,disable_web_page_preview=disable_webpage_preview)
         else:
-            bot.send_message(chat_id=sender, text=messaggio)
+            bot.send_message(chat_id=sender, text=messaggio,disable_web_page_preview=disable_webpage_preview)
     except Unauthorized: #user blocked the bot
         if auto_remove == True:
             logging.info(f"{sender} blocked the bot, he's been removed from the database")
