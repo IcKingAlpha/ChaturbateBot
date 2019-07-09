@@ -218,6 +218,7 @@ def add(bot, update, args) -> None:
                 "You need to specify an username to follow, use the command like /add <b>username</b>\n You can also add multiple users at the same time by separating them using a comma, like /add <b>username1</b>,<b>username2</b>", bot, html=True
             )
             return
+        # not lowercase usernames bug the api calls
     if len(args)>1:
         for username in args:
             if username!="":
@@ -237,7 +238,7 @@ def add(bot, update, args) -> None:
     usernames_in_database = []
     db = sqlite3.connect(bot_path + '/database.db')
     cursor = db.cursor()
-    # obtain usernames in the database
+    # obtain present usernames
     sql = f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'"
     try:
         cursor.execute(sql)
@@ -309,8 +310,20 @@ def add(bot, update, args) -> None:
 def remove(bot, update, args) -> None:
     
     chatid = update.message.chat.id
-    username_message_list = []
-    usernames_in_database=[]
+    username_list = []
+    if len(args) != 1:
+        risposta(
+            chatid,
+            "You need to specify an username to follow, use the command like /remove <b>test</b>", bot, html=True)
+        return
+    username = args[0].lower()
+    if username == "":
+        risposta(
+            chatid,
+            "The username you tried to remove doesn't exist or there has been an error", bot
+        )
+        return
+
 
     if len(args) < 1:
             risposta(
@@ -337,21 +350,23 @@ def remove(bot, update, args) -> None:
     cursor = db.cursor()
     # obtain usernames in the database
     sql = f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'"
+
     try:
+        db = sqlite3.connect(bot_path + '/database.db')
+        cursor = db.cursor()
         cursor.execute(sql)
         results = cursor.fetchall()
         for row in results:
-            usernames_in_database.append(row[0])
+            username_list.append(row[0])
     except Exception as e:
         handle_exception(e)
     finally:
         db.close()
 
-    if "all" in username_message_list:
+    if username == "all":
         exec_query(
            f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
         risposta(chatid, "All usernames have been removed", bot)
-
         logging.info(f'{chatid} removed all')
 
     else:
@@ -530,6 +545,7 @@ def check_online_status() -> None:
         def crawl(q, response_dict):
             while not q.empty():
                 work = q.get()                      #fetch new work from the Queue
+
                 for attempt in range(5): #try to connect 5 times as there are a lot of network disruptions
                     try:
                         username=work[1]
@@ -558,6 +574,7 @@ def check_online_status() -> None:
                     
                     else:
                         break
+
                 #signal to the queue that task has been processed
                 q.task_done()
             return True
