@@ -260,7 +260,7 @@ def add(bot, update, args) -> None:
      
     for username in username_message_list:
         try:
-            target = "https://en.chaturbate.com/api/chatvideocontext/" + username    
+            target = f"https://en.chaturbate.com/api/chatvideocontext/{username}"
             response = requests.get(target, headers=headers)
 
             #check if the response can be actually be parsed
@@ -308,22 +308,10 @@ def add(bot, update, args) -> None:
 
 
 def remove(bot, update, args) -> None:
-    
+    logging.info("remove")
     chatid = update.message.chat.id
-    username_list = []
-    if len(args) != 1:
-        risposta(
-            chatid,
-            "You need to specify an username to follow, use the command like /remove <b>test</b>", bot, html=True)
-        return
-    username = args[0].lower()
-    if username == "":
-        risposta(
-            chatid,
-            "The username you tried to remove doesn't exist or there has been an error", bot
-        )
-        return
-
+    username_message_list = []
+    usernames_in_database=[]
 
     if len(args) < 1:
             risposta(
@@ -343,41 +331,31 @@ def remove(bot, update, args) -> None:
     else:
         username_message_list.append(args[0].lower())
     
-
-    username_message_list=list(dict.fromkeys(username_message_list)) #remove duplicate usernames
-
     db = sqlite3.connect(bot_path + '/database.db')
     cursor = db.cursor()
     # obtain usernames in the database
     sql = f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'"
-
     try:
-        db = sqlite3.connect(bot_path + '/database.db')
-        cursor = db.cursor()
         cursor.execute(sql)
         results = cursor.fetchall()
         for row in results:
-            username_list.append(row[0])
+            usernames_in_database.append(row[0])
     except Exception as e:
         handle_exception(e)
     finally:
         db.close()
 
-    if username == "all":
+    if "all" in username_message_list:
         exec_query(
            f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
         risposta(chatid, "All usernames have been removed", bot)
-        logging.info(f'{chatid} removed all')
-
     else:
         for username in username_message_list:
             if username in usernames_in_database:
                 exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
                 risposta(chatid, f"{username} has been removed", bot)
-                logging.info(f'{chatid} removed {username}')
             else:
-                risposta(chatid,f"You aren't following {username}", bot)
-                logging.info(f'{chatid} tried to remove {username}')        
+                risposta(chatid,f"You aren't following {username}", bot)   
 
 
 
@@ -549,7 +527,7 @@ def check_online_status() -> None:
                 for attempt in range(5): #try to connect 5 times as there are a lot of network disruptions
                     try:
                         username=work[1]
-                        target = "https://en.chaturbate.com/api/chatvideocontext/" + username.lower()
+                        target = f"https://en.chaturbate.com/api/chatvideocontext/{username.lower()}"
                         headers = {
                             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
                         response = requests.get(target, headers=headers)
@@ -616,7 +594,7 @@ def check_online_status() -> None:
                                 f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}'")
 
                             for y in chatid_dict[username]:
-                                risposta(y, username + " is now offline", bot)
+                                risposta(y, f"{username} is now offline", bot)
 
 
                     elif online_dict[username] == "F":
@@ -625,7 +603,7 @@ def check_online_status() -> None:
                                 f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
 
                             for y in chatid_dict[username]:    
-                                risposta(y, username +" is now online! You can watch the live here: http://en.chaturbate.com/"+ username, bot)
+                                risposta(y, f"{username} is now online! You can watch the live here: http://chaturbate.com/{username}", bot)
 
                             
 
@@ -639,34 +617,25 @@ def check_online_status() -> None:
                                 exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
                                 
                                 for y in chatid_dict[username]:    
-                                    risposta(y, username +" is now online! You can watch the live here: http://en.chaturbate.com/"+ username, bot)
+                                    risposta(y, f"{username} is now online! You can watch the live here: http://chaturbate.com/{username}", bot)
 
                         if "Room is deleted" in str(response['detail']):
                             exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
-                                risposta(y, username +" has been removed because room has been deleted", bot)
-                            logging.info(
-                                username+
-                                " has been removed because room has been deleted"
-                            )
+                                risposta(y, f"{username} has been removed because room has been deleted", bot)
+                            logging.info(f"{username} has been removed because room has been deleted")
 
-                        if "This room has been banned" in str(
-                                response['detail']):
-                            exec_query(
-                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                        if "This room has been banned" in str(response['detail']):
+                            exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
-                                risposta(y, username +" has been removed because room has been deleted", bot)
-                            logging.info(username+
-                                  " has been removed because has been banned")
+                                risposta(y, f"{username} has been removed because room has been deleted", bot)
+                            logging.info(f"{username} has been removed because has been banned")
 
-                        if "This room is not available to your region or gender." in str(
-                                response['detail']):
-                            exec_query(
-                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                        if "This room is not available to your region or gender." in str(response['detail']):
+                            exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
-                                risposta(y, username +" has been removed because of geoblocking, I'm going to try to fix this soon", bot)
-                            logging.info(username+
-                                  " has been removed because of blocking")          
+                                risposta(y, f"{username} has been removed because of geoblocking, I'm going to try to fix this soon", bot)
+                            logging.info(f"{username} has been removed because of blocking")          
             except Exception as e:
                 handle_exception(e)
 
