@@ -451,7 +451,7 @@ def stream_image(bot, update, args) -> None:
         logging.info(f'{chatid} viewed {username} stream image')
     else:
         risposta(chatid,f"The model {username} is offline, private or does not exist",bot)
-        logging.info(f'{chatid} failed to view {username} stream image')
+        logging.error(f'{chatid} failed to view {username} stream image')
 
 
 #endregion
