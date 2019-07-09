@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import argparse
+import datetime
 import json
 import logging
 import os
@@ -8,18 +9,17 @@ import sqlite3
 import threading
 import time
 import urllib.request
-import requests
-import datetime
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
 from queue import Queue
 
-from concurrent.futures import ThreadPoolExecutor
-
+import requests
 import telegram
+from PIL import Image
 from requests_futures.sessions import FuturesSession
 from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
 from telegram.ext import CommandHandler, Updater
-
 
 ap = argparse.ArgumentParser()
 ap.add_argument(
@@ -399,6 +399,24 @@ def list_command(bot, update) -> None:
             chatid, f"You are currently following these {len(username_list)} users:\n" +
             followed_users, bot, html=True)
 
+def stream_image(bot, update, args) -> None:
+    chatid = update.message.chat.id
+
+    if len(args) < 1:
+        risposta(chatid,"You didn't specify a model to get the stream image of",bot)
+        return
+
+    username=args[0].lower()
+
+    model_image=Image.open(BytesIO(requests.get(f'https://roomimg.stream.highwebmedia.com/ri/{username}.jpg').content))
+    bio = BytesIO()
+    bio.name = 'image.jpeg'
+    model_image.save(bio, 'JPEG')
+    bio.seek(0)
+
+    bot.send_chat_action(chatid, action="upload_photo")
+    bot.send_photo(chatid, bio)
+
 #endregion
 
 #region admin functions
@@ -640,7 +658,7 @@ def check_online_status() -> None:
             except Exception as e:
                 handle_exception(e)
 
-
+#endregion
 
 
 start_handler = CommandHandler(('start', 'help'), start)
@@ -655,6 +673,9 @@ dispatcher.add_handler(remove_handler)
 list_handler = CommandHandler('list', list_command)
 dispatcher.add_handler(list_handler)
 
+stream_image_handler = CommandHandler('stream_image', stream_image, pass_args=True)
+dispatcher.add_handler(stream_image_handler)
+
 authorize_admin_handler = CommandHandler(
     'authorize_admin', authorize_admin, pass_args=True)
 dispatcher.add_handler(authorize_admin_handler)
@@ -663,7 +684,7 @@ send_message_to_everyone_handler = CommandHandler(
     'send_message_to_everyone', send_message_to_everyone, pass_args=True)
 dispatcher.add_handler(send_message_to_everyone_handler)
 
-#endregion
+
 
 # default table creation
 exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (

@@ -3,3 +3,4 @@ python-telegram-bot
 beautifulsoup4
 sentry-sdk==0.10.0
 requests_futures
+pillow
