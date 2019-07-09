@@ -416,6 +416,7 @@ def stream_image(bot, update, args) -> None:
 
     bot.send_chat_action(chatid, action="upload_photo")
     bot.send_photo(chatid, bio)
+    logging.info(f'{chatid} viewed {username} stream image')
 
 #endregion
 
