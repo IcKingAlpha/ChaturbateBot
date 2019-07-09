@@ -722,6 +722,7 @@ send_message_to_everyone_handler = CommandHandler(
 dispatcher.add_handler(send_message_to_everyone_handler)
 
 
+logging.info('Checking database existence...')
 
 # default table creation
 exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
@@ -733,8 +734,9 @@ exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
 exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
         CHAT_ID  CHAR(100))""")
 
-
+logging.info('Starting models checking thread...')
 threading.Thread(target=check_online_status,daemon=True).start()
 
+logging.info('Starting telegram polling thread...')
 updater.start_polling()
 updater.idle()
