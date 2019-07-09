@@ -330,8 +330,9 @@ def remove(bot, update, args) -> None:
     else:
         username_message_list.append(args[0].lower())
     
+
     username_message_list=list(dict.fromkeys(username_message_list)) #remove duplicate usernames
-    
+
     db = sqlite3.connect(bot_path + '/database.db')
     cursor = db.cursor()
     # obtain usernames in the database
@@ -350,7 +351,9 @@ def remove(bot, update, args) -> None:
         exec_query(
            f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
         risposta(chatid, "All usernames have been removed", bot)
+
         logging.info(f'{chatid} removed all')
+
     else:
         for username in username_message_list:
             if username in usernames_in_database:
@@ -360,6 +363,7 @@ def remove(bot, update, args) -> None:
             else:
                 risposta(chatid,f"You aren't following {username}", bot)
                 logging.info(f'{chatid} tried to remove {username}')        
+
 
 
 def list_command(bot, update) -> None:
@@ -542,18 +546,19 @@ def check_online_status() -> None:
                             response_json = json.loads(response.content)
                             response_dict[username] = response_json #response[username]=status
     
+
     
                     except (json.JSONDecodeError,ConnectionError) as e:
                         handle_exception(e)
                         logging.info(username.lower()+" has failed to connect on attempt "+str(attempt))
-                        
                         time.sleep(1) #sleep and retry              
                     except Exception as e:
                         handle_exception(e)
                         response_dict[username] = "error"
-                    #signal to the queue that task has been processed
+                    
                     else:
                         break
+                #signal to the queue that task has been processed
                 q.task_done()
             return True
 
