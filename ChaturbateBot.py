@@ -405,7 +405,7 @@ def stream_image(bot, update, args) -> None:
     chatid = update.message.chat.id
 
     if len(args) < 1:
-        risposta(chatid,"You didn't specify a model to get the stream image of",bot)
+        risposta(chatid,"You didn't specify a model to get the stream image of\nUse the command like this: /stream_image <b>username</b>",bot, html=True)
         return
 
     username=args[0].lower()
