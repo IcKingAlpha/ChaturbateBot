@@ -308,7 +308,6 @@ def add(bot, update, args) -> None:
 
 
 def remove(bot, update, args) -> None:
-    logging.info("remove")
     chatid = update.message.chat.id
     username_message_list = []
     usernames_in_database=[]
@@ -349,11 +348,13 @@ def remove(bot, update, args) -> None:
         exec_query(
            f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
         risposta(chatid, "All usernames have been removed", bot)
+        logging.info(f"{chatid} removed all usernames")
     else:
         for username in username_message_list:
             if username in usernames_in_database:
                 exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
                 risposta(chatid, f"{username} has been removed", bot)
+                logging.info(f"{chatid} removed {username}")
             else:
                 risposta(chatid,f"You aren't following {username}", bot)   
 
