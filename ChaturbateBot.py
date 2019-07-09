@@ -217,7 +217,6 @@ def add(bot, update, args) -> None:
                 "You need to specify an username to follow, use the command like /add <b>username</b>\n You can also add multiple users at the same time by separating them using a comma, like /add <b>username1</b>,<b>username2</b>", bot, html=True
             )
             return
-        # not lowercase usernames bug the api calls
     if len(args)>1:
         for username in args:
             if username!="":
@@ -235,7 +234,7 @@ def add(bot, update, args) -> None:
     usernames_in_database = []
     db = sqlite3.connect(bot_path + '/database.db')
     cursor = db.cursor()
-    # obtain present usernames
+    # obtain usernames in the database
     sql = f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'"
     try:
         cursor.execute(sql)
@@ -329,47 +328,52 @@ def add(bot, update, args) -> None:
 def remove(bot, update, args) -> None:
     logging.info("remove")
     chatid = update.message.chat.id
-    username_list = []
-    if len(args) != 1:
-        risposta(
-            chatid,
-            "You need to specify an username to follow, use the command like /remove <b>test</b>", bot, html=True)
-        return
-    username = args[0].lower()
-    if username == "":
-        risposta(
-            chatid,
-            "The username you tried to remove doesn't exist or there has been an error", bot
-        )
-        return
+    username_message_list = []
+    usernames_in_database=[]
 
-    sql = f"SELECT * FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'"
+    if len(args) < 1:
+            risposta(
+                chatid,
+                "You need to specify an username to follow, use the command like /remove <b>test</b>\n You can also remove multiple users at the same time by separating them using a comma, like /remove <b>username1</b>,<b>username2</b>", bot, html=True
+            )
+            return
+    if len(args)>1:
+        for username in args:
+            if username!="":
+                username_message_list.append(username.replace(" ","").replace(",",""))
+    # len(args)==0 -> only one username or all in one line
+    elif "," in args[0].lower():
+        for splitted_username in args[0].lower().replace(" ","").rstrip().split(","):
+            if splitted_username!="":
+             username_message_list.append(splitted_username)
+    else:
+        username_message_list.append(args[0].lower())
+    
+    db = sqlite3.connect(bot_path + '/database.db')
+    cursor = db.cursor()
+    # obtain usernames in the database
+    sql = f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'"
     try:
-        db = sqlite3.connect(bot_path + '/database.db')
-        cursor = db.cursor()
         cursor.execute(sql)
         results = cursor.fetchall()
         for row in results:
-            username_list.append(row[0])
+            usernames_in_database.append(row[0])
     except Exception as e:
         handle_exception(e)
     finally:
         db.close()
 
-    if username == "all":
+    if "all" in username_message_list:
         exec_query(
            f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
         risposta(chatid, "All usernames have been removed", bot)
-
-    elif username in username_list:  # this could have a better implementation but it works
-        exec_query(
-            f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
-        risposta(chatid, username + " has been removed", bot)
-
     else:
-        risposta(
-            chatid,
-            "You aren't following the username you have tried to remove", bot)
+        for username in username_message_list:
+            if username in usernames_in_database:
+                exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
+                risposta(chatid, f"{username} has been removed", bot)
+            else:
+                risposta(chatid,f"You aren't following {username}", bot)        
 
 
 def list_command(bot, update) -> None:
@@ -543,8 +547,6 @@ def check_online_status() -> None:
                         else:
                             response_json = json.loads(response.content)
                             response_dict[username] = response_json #response[username]=status
-
-    
     
                     except (json.JSONDecodeError,ConnectionError) as e:
                         handle_exception(e)
@@ -554,9 +556,9 @@ def check_online_status() -> None:
                     except Exception as e:
                         handle_exception(e)
                         response_dict[username] = "error"
-                    #signal to the queue that task has been processed
                     else:
                         break
+                #signal to the queue that task has been processed
                 q.task_done()
             return True
 
