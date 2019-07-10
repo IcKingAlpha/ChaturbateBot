@@ -286,6 +286,7 @@ def add(bot, update, args) -> None:
     # 0 is unlimited usernames
     if len(usernames_in_database)+len(username_message_list) > user_limit and (admin_check(chatid) == False != user_limit != 0):
         risposta(chatid,"You are trying to add more usernames than your limit permits, which is "+str(user_limit),bot)
+        logging.info(f'{chatid} tried to add more usernames than his limit')
         return
 
     headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
@@ -298,6 +299,7 @@ def add(bot, update, args) -> None:
             #check if the response can be actually be parsed
             if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content: #check if models still exists
                 risposta(chatid, f"{username} was not added because it doesn't exist", bot)
+                logging.info(f'{chatid} tried to add {username}, which does not exist')
                 return
             else:
                 response_json = json.loads(response.content)
@@ -306,30 +308,22 @@ def add(bot, update, args) -> None:
             if (("status" in response_json) and ("401" in str(response_json['status'])) and ("This room requires a password" not in str(response_json['detail']))):
     
                 if "Room is deleted" in str(response_json['detail']):
-    
-                    risposta(
-                        chatid, username +
-                        " has not been added because room has been deleted", bot
-                    )
-                    logging.info(
-                        username+
-                        " has not been added because room has been deleted")
+                    risposta(chatid,f"{username} has not been added because room has been deleted", bot)
+                    logging.info(f"{chatid} could not add {username} because room has been deleted")
+
                 if "This room has been banned" in str(response_json['detail']):
-    
-                    risposta(
-                        chatid, username +
-                        " has not been added because has been banned", bot)
-                    logging.info(username+
-                          " has not been added because has been banned")
+                    risposta(chatid, f"{username} has not been added because is banned", bot)
+                    logging.info(f"{chatid} could not add {username} because is banned")
 
             else:
                 if username not in usernames_in_database:
                         exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
                         if 'detail' in response_json:
                             if "This room requires a password" in str(response_json['detail']):
-                                risposta(chatid, username + " uses a password for his/her room, it has been added but tracking could be unstable", bot)
+                                risposta(chatid,f"{username} uses a password for his/her room, it has been added but tracking could be unstable", bot)
+                                logging.info(f'{chatid} added {username}')
                         else:
-                            risposta(chatid, username + " has been added", bot)
+                            risposta(chatid, f"{username} has been added", bot)
                             logging.info(f'{chatid} added {username}')
                 else:
                     risposta(chatid, f"{username} has already been added", bot)
@@ -337,6 +331,7 @@ def add(bot, update, args) -> None:
         except Exception as e:
             handle_exception(e)
             risposta(chatid, f"{username} was not added because an error happened", bot)
+            logging.info(f'{chatid} could not add {username} because an error happened')
 
 
 def remove(bot, update, args) -> None:
