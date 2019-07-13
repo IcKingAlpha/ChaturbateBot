@@ -522,9 +522,7 @@ def send_message_to_everyone(bot, update, args) -> None:
 def check_online_status() -> None:
     global updater
     bot = updater.bot
-    while (1):
-        
-
+    def update_status() -> None :
         username_list = []
         online_dict = {}
         chatid_dict = {}
@@ -689,6 +687,11 @@ def check_online_status() -> None:
                             logging.info(f"{username} has been removed because of blocking")          
             except Exception as e:
                 handle_exception(e)
+    while(1):
+        try:
+            update_status()
+        except Exception as e:
+            handle_exception(e)
 
 #endregion
 
