@@ -672,19 +672,19 @@ def check_online_status() -> None:
                             exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, f"{username} has been removed because room has been deleted", bot)
-                            logging.info(f"{username} has been removed because room has been deleted")
+                            logging.info(f"{username} has been removed from database because room has been deleted")
 
                         if "This room has been banned" in str(response['detail']):
                             exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, f"{username} has been removed because room has been deleted", bot)
-                            logging.info(f"{username} has been removed because has been banned")
+                            logging.info(f"{username} has been removed from database because has been banned")
 
                         if "This room is not available to your region or gender." in str(response['detail']):
                             exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, f"{username} has been removed because of geoblocking, I'm going to try to fix this soon", bot)
-                            logging.info(f"{username} has been removed because of blocking")          
+                            logging.info(f"{username} has been removed from database because of geoblocking")          
             except Exception as e:
                 handle_exception(e)
     while(1):
