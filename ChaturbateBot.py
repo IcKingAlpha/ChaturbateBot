@@ -59,12 +59,6 @@ ap.add_argument(
     default=True,
     help="Should the bot remove from the database anyone whom blocks it? default= true")
 ap.add_argument(
-    "-sentry",
-    required=False,
-    type=str,
-    default="",
-    help="Your sentry personal url")
-ap.add_argument(
     "--admin-password",
     required=False,
     type=str,
@@ -88,21 +82,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO,filename=os.path.join(bot_path,"program_log.log"))
 
 
-# enable sentry if sentry_key is passed as an argument
-if sentry_key != "":
-    import sentry_sdk
-    sentry_sdk.init(sentry_key)
-
-    def handle_exception(e: Exception) -> None:
-        try:
-         sentry_sdk.capture_exception()
-        except Exception as e:
-            logging.error(e,exc_info=True)
-            sentry_sdk.capture_message("Sentry ha failato ad handlare l'exception"+"l'exception avvenuta è "+str(e))
-
-else:
-
-    def handle_exception(e: Exception) -> None:
+def handle_exception(e: Exception) -> None:
         logging.error(e,exc_info=True)
 
 
