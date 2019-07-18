@@ -101,3 +101,4 @@ ENV/
 .vscode/launch.json
 .pytest_cache/v/cache/nodeids
 .vscode/settings.json
+.idea/

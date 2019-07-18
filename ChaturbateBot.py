@@ -72,7 +72,6 @@ dispatcher = updater.dispatcher
 
 bot_path = args["working_folder"]
 wait_time = args["time"]
-sentry_key = args["sentry"]
 http_threads = args["threads"]
 user_limit = args["limit"]
 auto_remove = args["remove"]
