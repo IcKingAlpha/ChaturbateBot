@@ -88,9 +88,7 @@ def handle_exception(e: Exception) -> None:
 def exec_query(query: str) -> None:
     """Executes a db query
 
-    Parameters:
-
-    query (str): The sql query to execute
+    :param str query: The sql query to execute
 
     """
 
@@ -113,21 +111,14 @@ def exec_query(query: str) -> None:
 
 
 def risposta(sender: str, messaggio: str, bot, html: bool=False, disable_webpage_preview: bool = False) -> None:
-    """Sends a message to a telegram user
+    """
+    Sends a message to a telegram user
 
-    Parameters:
-
-    sender (str): The chat id of the user who will receive the message
-
-    messaggio (str): The message who the user will receive
-
-    bot: telegram bot instance
-
-    html (bool): Enable html markdown parsing in the message
-
-    disable_webpage_preview (bool): Disable webpage preview in links
-
-
+    :param str sender: The chat id of the user who will receive the message
+    :param str messaggio: The message who the user will receive
+    :param bot: telegram bot instance
+    :param bool html: Enable html markdown parsing in the message
+    :param bool disable_webpage_preview: Disable webpage preview in links
     """
 
     try:
@@ -146,17 +137,13 @@ def risposta(sender: str, messaggio: str, bot, html: bool=False, disable_webpage
 
 
 def admin_check(chatid: str) -> bool:
-    """Checks if a chatid is present in the admin database
-
-    Parameters:
-
-    chatid (str): The chat id of the user who will be checked
-
-    Returns:
-    bool: The logic value of the check
-
     """
+    Checks if user is present in the admin database
 
+    :rtype: bool
+    :param str chatid: chatid
+    :return: True if admin, False if not
+    """
     admin_list = []
 
     db = sqlite3.connect(bot_path + '/database.db')
@@ -193,12 +180,8 @@ def is_model_viewable(model: str) -> bool:
     """
     Checks if you can see the model live (without any privilege)
 
-    Parameters:
-
-    model (str): The model's name
-
-    Returns:
-    bool: The logic value of the check
+    :param string model: The model's name
+    :rtype: bool
     """
     target = f"https://en.chaturbate.com/api/chatvideocontext/{model}"
     headers = {
@@ -213,7 +196,7 @@ def is_model_viewable(model: str) -> bool:
     if ("status" not in response and response != "error"):
         if (response["room_status"] == "offline" or response["room_status"] == "away" or response["room_status"] == "private" or response["room_status"]=="hidden"):
             return False
-    elif ("status" in response): #avoid keyerror?
+    elif ("status" in response): #avoid keyerror
         if response["status"]==401: 
             return False
     elif response == "error":
@@ -241,7 +224,7 @@ def add(bot, update, args) -> None:
              username_message_list.append(splitted_username)
     else:
         username_message_list.append(args[0].lower())
-    
+
     username_message_list=list(dict.fromkeys(username_message_list)) #remove duplicate usernames
     
 
@@ -566,7 +549,7 @@ def check_online_status() -> None:
                             response_dict[username] = "error" #avoid processing the failed model
                         else:
                             response_json = json.loads(response.content)
-                            response_dict[username] = response_json #response[username]=status
+                            response_dict[username] = response_json
     
 
     
@@ -636,16 +619,11 @@ def check_online_status() -> None:
                             
 
 
-                elif response != "error":
-                    if "401" in str(response['status']):
-                        if "This room requires a password" in str(response['detail']): #assuming the user knows the password
-
-                            if (online_dict[username] == "F"):
-
-                                exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
-                                
-                                for y in chatid_dict[username]:    
-                                    risposta(y, f"{username} is now online! You can watch the live here: http://chaturbate.com/{username}", bot)
+                elif response != "error" and "401" in str(response['status']):
+                        if "This room requires a password" in str(response['detail']) and (online_dict[username] == "F"): #assuming the user knows the password
+                            exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
+                            for y in chatid_dict[username]:
+                                risposta(y, f"{username} is now online! You can watch the live here: http://chaturbate.com/{username}", bot)
 
                         if "Room is deleted" in str(response['detail']):
                             exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
