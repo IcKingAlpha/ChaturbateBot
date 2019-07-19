@@ -1,4 +1,5 @@
 import Utils
+import logging
 
 
 def user_has_preferences(chatid: str) -> bool:
@@ -23,6 +24,7 @@ def add_user_to_preferences(chatid: str) -> None:
     :param chatid: The chatid of the user who will be tested
     """
     Utils.exec_query(f"INSERT INTO PREFERENCES VALUES ('{chatid}', '1')")
+    logging.info(f'{chatid} has been added to preferences')
 
 
 def remove_user_from_preferences(chatid: str) -> None:
@@ -32,6 +34,7 @@ def remove_user_from_preferences(chatid: str) -> None:
     :param chatid: The chatid of the user who will be removed
     """
     Utils.exec_query(f"DELETE FROM PREFERENCES WHERE CHAT_ID='{chatid}'")
+    logging.info(f'{chatid} has been removed from preferences')
 
 
 def update_link_preview_preference(chatid: str, value: bool) -> None:
