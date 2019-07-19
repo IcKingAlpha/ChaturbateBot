@@ -34,9 +34,14 @@ http_threads = args["threads"]
 user_limit = args["limit"]
 auto_remove = args["remove"]
 admin_pw = args["admin_password"]
+logging_file=args["logging_file"]
+
+logging_level=logging.INFO
+if not Utils.str2bool(args["enable_logging"]):
+    logging_level=99 # stupid workaround not to log -> only creates file
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO,filename=os.path.join(bot_path,"program_log.log"))
+                    level=logging_level,filename=logging_file)
 
 
 def send_message(chatid: str, messaggio: str, bot, html: bool=False) -> None:

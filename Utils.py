@@ -13,6 +13,17 @@ def handle_exception(e: Exception) -> None:
     logging.error(e, exc_info=True)
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise ValueError('Boolean value expected.')
+
+
 def exec_query(query: str, db_path: str = bot_path) -> None:
     """Executes a SQL query
 
