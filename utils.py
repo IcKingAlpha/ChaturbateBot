@@ -14,10 +14,10 @@ def handle_exception(e: Exception) -> None:
 
 
 def exec_query(query: str, db_path: str = bot_path) -> None:
-    """Executes a db query
+    """Executes a SQL query
 
-    :param str db_path: The database path
-    :param str query: The sql query to execute
+    :param db_path: The database path
+    :param query: The SQL query to execute
 
     """
 
@@ -37,3 +37,25 @@ def exec_query(query: str, db_path: str = bot_path) -> None:
         db.rollback()
     # disconnect from server
     db.close()
+
+
+def retrieve_query_results(query: str, db_path: str = bot_path) -> list:
+    """
+    Returns a list containing the SQL query results
+
+    :param query: The SQL query to execute
+    :param db_path: The database path
+    :rtype: list
+    :return: A list containing the query results
+    """
+    db = sqlite3.connect(db_path + '/database.db')
+    cursor = db.cursor()
+    try:
+        cursor.execute(query)
+        results = cursor.fetchall()
+        return results
+    except Exception as e:
+        handle_exception(e)
+        return []  # return empty list
+    finally:
+        db.close()
