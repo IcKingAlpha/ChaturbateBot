@@ -21,6 +21,8 @@ from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
 from telegram.ext import CommandHandler, Updater
 
+import utils
+
 ap = argparse.ArgumentParser()
 ap.add_argument(
     "-k", "--key", required=True, type=str, help="Telegram bot api key. It's required in order to run this bot")
@@ -71,6 +73,7 @@ updater = Updater(token=args["key"])
 dispatcher = updater.dispatcher
 
 bot_path = args["working_folder"]
+utils.bot_path=bot_path #temporary solution until I move argparse to a different module
 wait_time = args["time"]
 http_threads = args["threads"]
 user_limit = args["limit"]
@@ -81,36 +84,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO,filename=os.path.join(bot_path,"program_log.log"))
 
 
-def handle_exception(e: Exception) -> None:
-        logging.error(e,exc_info=True)
-
-
-def exec_query(query: str) -> None:
-    """Executes a db query
-
-    :param str query: The sql query to execute
-
-    """
-
-    # Open database connection
-    db = sqlite3.connect(bot_path + '/database.db')
-    # prepare a cursor object using cursor() method
-    cursor = db.cursor()
-    # Prepare SQL query to INSERT a record into the database.
-    try:
-        # Execute the SQL command
-        cursor.execute(query)
-        # Commit your changes in the database
-        db.commit()
-    except Exception as e:
-        # Rollback in case there is any error
-        handle_exception(e)
-        db.rollback()
-    # disconnect from server
-    db.close()
-
-
-def risposta(sender: str, messaggio: str, bot, html: bool=False, disable_webpage_preview: bool = False) -> None:
+def risposta(sender: str, messaggio: str, bot, html: bool=False) -> None:
     """
     Sends a message to a telegram user
 
@@ -118,12 +92,31 @@ def risposta(sender: str, messaggio: str, bot, html: bool=False, disable_webpage
     :param str messaggio: The message who the user will receive
     :param bot: telegram bot instance
     :param bool html: Enable html markdown parsing in the message
-    :param bool disable_webpage_preview: Disable webpage preview in links
     """
+
+    disable_webpage_preview=False
+
+    '''
+
+    db = sqlite3.connect(bot_path + '/database.db')
+    cursor = db.cursor()
+
+    sql = "SELECT * FROM PREFERENCES"
+    try:
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        for row in results:
+            admin_list.append(row[0])
+    except Exception as e:
+        utils.handle_exception(e)
+    finally:
+        db.close()
+    
+    '''
 
     try:
         bot.send_chat_action(chat_id=sender, action="typing")
-        if html == True:
+        if html:
             bot.send_message(chat_id=sender, text=messaggio,
                              parse_mode=telegram.ParseMode.HTML,disable_web_page_preview=disable_webpage_preview)
         else:
@@ -131,10 +124,9 @@ def risposta(sender: str, messaggio: str, bot, html: bool=False, disable_webpage
     except Unauthorized: #user blocked the bot
         if auto_remove == True:
             logging.info(f"{sender} blocked the bot, he's been removed from the database")
-            exec_query(f"DELETE FROM CHATURBATE WHERE CHAT_ID='{sender}'")
+            utils.exec_query(f"DELETE FROM CHATURBATE WHERE CHAT_ID='{sender}'")
     except Exception as e:
-        handle_exception(e)
-
+        utils.handle_exception(e)
 
 def admin_check(chatid: str) -> bool:
     """
@@ -156,7 +148,7 @@ def admin_check(chatid: str) -> bool:
         for row in results:
             admin_list.append(row[0])
     except Exception as e:
-        handle_exception(e)
+        utils.handle_exception(e)
     finally:
         db.close()
 
@@ -240,7 +232,7 @@ def add(bot, update, args) -> None:
         for row in results:
             usernames_in_database.append(row[0])
     except Exception as e:
-        handle_exception(e)
+        utils.handle_exception(e)
     finally:
         db.close()
 
@@ -279,7 +271,7 @@ def add(bot, update, args) -> None:
 
             else:
                 if username not in usernames_in_database:
-                        exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
+                        utils.exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
                         if 'detail' in response_json:
                             if "This room requires a password" in str(response_json['detail']):
                                 risposta(chatid,f"{username} uses a password for his/her room, it has been added but tracking could be unstable", bot)
@@ -291,7 +283,7 @@ def add(bot, update, args) -> None:
                     risposta(chatid, f"{username} has already been added", bot)
 
         except Exception as e:
-            handle_exception(e)
+            utils.handle_exception(e)
             risposta(chatid, f"{username} was not added because an error happened", bot)
             logging.info(f'{chatid} could not add {username} because an error happened')
 
@@ -329,19 +321,19 @@ def remove(bot, update, args) -> None:
         for row in results:
             usernames_in_database.append(row[0])
     except Exception as e:
-        handle_exception(e)
+        utils.handle_exception(e)
     finally:
         db.close()
 
     if "all" in username_message_list:
-        exec_query(
+        utils.exec_query(
            f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
         risposta(chatid, "All usernames have been removed", bot)
         logging.info(f"{chatid} removed all usernames")
     else:
         for username in username_message_list:
             if username in usernames_in_database:
-                exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
+                utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
                 risposta(chatid, f"{username} has been removed", bot)
                 logging.info(f"{chatid} removed {username}")
             else:
@@ -366,7 +358,7 @@ def list_command(bot, update) -> None:
             username_list.append(row[0])
             online_list.append(row[2])
     except Exception as e:
-        handle_exception(e)
+        utils.handle_exception(e)
     else:  # else means that the code will get executed if an exception doesn't happen
 
         for x in range(0, len(username_list)):
@@ -433,7 +425,7 @@ def authorize_admin(bot, update, args) -> None:
     if admin_check(chatid):
         risposta(chatid, "You already are an admin", bot)
     elif args[0] == admin_pw:
-        exec_query(f"""INSERT INTO ADMIN VALUES ({chatid})""")
+        utils.exec_query(f"""INSERT INTO ADMIN VALUES ({chatid})""")
         risposta(chatid, "Admin enabled", bot)
         risposta(chatid, "Remember to disable the --admin-password if you want to avoid people trying to bruteforce this command", bot)
         logging.info(f"{chatid} got admin authorization")
@@ -464,7 +456,7 @@ def send_message_to_everyone(bot, update, args) -> None:
         for row in results:
             chatid_list.append(row[0])
     except Exception as e:
-        handle_exception(e)
+        utils.handle_exception(e)
     finally:
         db.close()
 
@@ -501,7 +493,7 @@ def check_online_status() -> None:
                 #username row0
                 #online row1
         except Exception as e:
-            handle_exception(e)
+            utils.handle_exception(e)
         finally:
             db.close()
         
@@ -524,7 +516,7 @@ def check_online_status() -> None:
                             for row in results:
                                 chatid_list.append(row[0])
                 except Exception as e:
-                            handle_exception(e)
+                            utils.handle_exception(e)
                 finally:
                             db.close()
                 chatid_dict[username]=chatid_list            
@@ -545,7 +537,7 @@ def check_online_status() -> None:
 
                         if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content: #check if models still exists
                             logging.info(username.lower()+" is not a model anymore, removing from db")
-                            exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                            utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             response_dict[username] = "error" #avoid processing the failed model
                         else:
                             response_json = json.loads(response.content)
@@ -554,11 +546,11 @@ def check_online_status() -> None:
 
     
                     except (json.JSONDecodeError,ConnectionError) as e:
-                        handle_exception(e)
+                        utils.handle_exception(e)
                         logging.info(username.lower()+" has failed to connect on attempt "+str(attempt))
                         time.sleep(1) #sleep and retry              
                     except Exception as e:
-                        handle_exception(e)
+                        utils.handle_exception(e)
                         response_dict[username] = "error"
                     
                     else:
@@ -601,7 +593,7 @@ def check_online_status() -> None:
                     if (response["room_status"] == "offline"):
 
                         if online_dict[username] == "T" :
-                            exec_query(
+                            utils.exec_query(
                                 f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}'")
 
                             for y in chatid_dict[username]:
@@ -610,7 +602,7 @@ def check_online_status() -> None:
 
                     elif online_dict[username] == "F":
 
-                            exec_query(
+                            utils.exec_query(
                                 f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
 
                             for y in chatid_dict[username]:    
@@ -621,34 +613,34 @@ def check_online_status() -> None:
 
                 elif response != "error" and "401" in str(response['status']):
                         if "This room requires a password" in str(response['detail']) and (online_dict[username] == "F"): #assuming the user knows the password
-                            exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
+                            utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, f"{username} is now online! You can watch the live here: http://chaturbate.com/{username}", bot)
 
                         if "Room is deleted" in str(response['detail']):
-                            exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                            utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, f"{username} has been removed because room has been deleted", bot)
                             logging.info(f"{username} has been removed from database because room has been deleted")
 
                         if "This room has been banned" in str(response['detail']):
-                            exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                            utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, f"{username} has been removed because room has been deleted", bot)
                             logging.info(f"{username} has been removed from database because has been banned")
 
                         if "This room is not available to your region or gender." in str(response['detail']):
-                            exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                            utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 risposta(y, f"{username} has been removed because of geoblocking, I'm going to try to fix this soon", bot)
                             logging.info(f"{username} has been removed from database because of geoblocking")          
             except Exception as e:
-                handle_exception(e)
+                utils.handle_exception(e)
     while(1):
         try:
             update_status()
         except Exception as e:
-            handle_exception(e)
+            utils.handle_exception(e)
 
 #endregion
 
@@ -680,13 +672,13 @@ dispatcher.add_handler(send_message_to_everyone_handler)
 logging.info('Checking database existence...')
 
 # default table creation
-exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
+utils.exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
         USERNAME  CHAR(60) NOT NULL,
         CHAT_ID  CHAR(100),
         ONLINE CHAR(1))""")
 
 # admin table creation
-exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
+utils.exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
         CHAT_ID  CHAR(100))""")
 
 logging.info('Starting models checking thread...')
