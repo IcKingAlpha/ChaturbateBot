@@ -12,6 +12,7 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from queue import Queue
+from pathlib import Path
 
 import requests
 import telegram
@@ -21,9 +22,9 @@ from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
 from telegram.ext import CommandHandler, Updater
 
-import Preferences
-import Utils
-from Argparse_chaturbatebot import args
+from modules import Preferences
+from modules import Utils
+from modules.Argparse_chaturbatebot import args
 
 updater = Updater(token=args["key"])
 dispatcher = updater.dispatcher

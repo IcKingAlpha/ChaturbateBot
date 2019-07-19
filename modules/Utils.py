@@ -1,6 +1,6 @@
 import logging
 import sqlite3
-from Argparse_chaturbatebot import args
+from modules.Argparse_chaturbatebot import args
 
 bot_path = args["working_folder"]
 
