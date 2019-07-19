@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import argparse
+
 import datetime
 import json
 import logging
@@ -21,60 +21,14 @@ from telegram.error import (BadRequest, ChatMigrated, NetworkError,
                             TelegramError, TimedOut, Unauthorized)
 from telegram.ext import CommandHandler, Updater
 
-import utils
-
-ap = argparse.ArgumentParser()
-ap.add_argument(
-    "-k", "--key", required=True, type=str, help="Telegram bot api key. It's required in order to run this bot")
-ap.add_argument(
-    "-f",
-    "--working-folder",
-    required=False,
-    type=str,
-    default=os.getcwd(),
-    help="Set the bot's working-folder. Default= ChaturbateBot.py's location")
-ap.add_argument(
-    "-t",
-    "--time",
-    required=False,
-    type=float,
-    default=0.3,
-    help="Time wait between every connection made, in seconds. Default=0.3s")
-ap.add_argument(
-    "-threads",
-    required=False,
-    type=int,
-    default=10,
-    help="The number of multiple http connection opened at the same time to check chaturbate. Default=10")
-ap.add_argument(
-    "-l",
-    "--limit",
-    required=False,
-    type=int,
-    default=0,
-    help="The maximum number of multiple users a person can follow, 0=unlimited")
-ap.add_argument(
-    "-r",
-    "--remove",
-    required=False,
-    type=bool,
-    default=True,
-    help="Should the bot remove from the database anyone whom blocks it? default= true")
-ap.add_argument(
-    "--admin-password",
-    required=False,
-    type=str,
-    default="",
-    help="The password to authorize yourself as an admin, disabled by default")
-args = vars(ap.parse_args())
-
+import Preferences
+import Utils
+from Argparse_chaturbatebot import args
 
 updater = Updater(token=args["key"])
 dispatcher = updater.dispatcher
 
 bot_path = args["working_folder"]
-#Todo: fix this temporary solution as I need to move argparse to a different module
-utils.bot_path=bot_path
 wait_time = args["time"]
 http_threads = args["threads"]
 user_limit = args["limit"]
@@ -95,14 +49,7 @@ def send_message(chatid: str, messaggio: str, bot, html: bool=False) -> None:
     :param bool html: Enable html markdown parsing in the message
     """
 
-    disable_webpage_preview=False
-
-    '''
-    preferences=[]
-    results=utils.retrieve_query_results(f"SELECT * FROM PREFERENCES WHERE CHAT_ID={chatid}")
-    for row in results:
-        preferences.append(row[0])
-    '''
+    disable_webpage_preview= not Preferences.get_user_link_preview_preference(chatid) #the setting is opposite of preference
 
     try:
         bot.send_chat_action(chat_id=chatid, action="typing")
@@ -114,28 +61,12 @@ def send_message(chatid: str, messaggio: str, bot, html: bool=False) -> None:
     except Unauthorized: #user blocked the bot
         if auto_remove == True:
             logging.info(f"{chatid} blocked the bot, he's been removed from the database")
-            utils.exec_query(f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+            Preferences.remove_user_from_preferences(chatid)
     except Exception as e:
-        utils.handle_exception(e)
-
-def admin_check(chatid: str) -> bool:
-    """
-    Checks if user is present in the admin database
-
-    :rtype: bool
-    :param str chatid: chatid
-    :return: True if admin, False if not
-    """
-    admin_list = []
-    results=utils.retrieve_query_results("SELECT * FROM ADMIN")
-    for row in results:
-        admin_list.append(row[0])
+        Utils.handle_exception(e)
 
 
-    if str(chatid) not in admin_list:
-        return False
-    else:
-        return True
 
 
 
@@ -203,13 +134,13 @@ def add(bot, update, args) -> None:
 
     usernames_in_database = []
     # obtain present usernames
-    results=utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+    results=Utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
     for row in results:
         usernames_in_database.append(row[0])
 
 
     # 0 is unlimited usernames
-    if len(usernames_in_database)+len(username_message_list) > user_limit and (admin_check(chatid) == False != user_limit != 0):
+    if len(usernames_in_database)+len(username_message_list) > user_limit and (Utils.admin_check(chatid) == False != user_limit != 0):
         send_message(chatid, "You are trying to add more usernames than your limit permits, which is " + str(user_limit), bot)
         logging.info(f'{chatid} tried to add more usernames than his limit')
         return
@@ -242,7 +173,7 @@ def add(bot, update, args) -> None:
 
             else:
                 if username not in usernames_in_database:
-                        utils.exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
+                        Utils.exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
                         if 'detail' in response_json:
                             if "This room requires a password" in str(response_json['detail']):
                                 send_message(chatid, f"{username} uses a password for his/her room, it has been added but tracking could be unstable", bot)
@@ -254,7 +185,7 @@ def add(bot, update, args) -> None:
                     send_message(chatid, f"{username} has already been added", bot)
 
         except Exception as e:
-            utils.handle_exception(e)
+            Utils.handle_exception(e)
             send_message(chatid, f"{username} was not added because an error happened", bot)
             logging.info(f'{chatid} could not add {username} because an error happened')
 
@@ -282,19 +213,19 @@ def remove(bot, update, args) -> None:
     else:
         username_message_list.append(args[0].lower())
 
-    results=utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+    results=Utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
     for row in results:
         usernames_in_database.append(row[0])
 
     if "all" in username_message_list:
-        utils.exec_query(
+        Utils.exec_query(
            f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
         send_message(chatid, "All usernames have been removed", bot)
         logging.info(f"{chatid} removed all usernames")
     else:
         for username in username_message_list:
             if username in usernames_in_database:
-                utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
+                Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
                 send_message(chatid, f"{username} has been removed", bot)
                 logging.info(f"{chatid} removed {username}")
             else:
@@ -309,7 +240,7 @@ def list_command(bot, update) -> None:
     username_dict = {}
     followed_users = ""
 
-    results=utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+    results=Utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
     if results!=[]: # an exception didn't happen
         for row in results:
             username_list.append(row[0])
@@ -374,10 +305,10 @@ def authorize_admin(bot, update, args) -> None:
             "The admin is disabled, check your telegram bot configuration", bot
         )
         return
-    if admin_check(chatid):
+    if Utils.admin_check(chatid):
         send_message(chatid, "You already are an admin", bot)
     elif args[0] == admin_pw:
-        utils.exec_query(f"""INSERT INTO ADMIN VALUES ({chatid})""")
+        Utils.exec_query(f"""INSERT INTO ADMIN VALUES ({chatid})""")
         send_message(chatid, "Admin enabled", bot)
         send_message(chatid, "Remember to disable the --admin-password if you want to avoid people trying to bruteforce this command", bot)
         logging.info(f"{chatid} got admin authorization")
@@ -388,7 +319,7 @@ def authorize_admin(bot, update, args) -> None:
 def send_message_to_everyone(bot, update, args) -> None:
     chatid = update.message.chat.id
 
-    if admin_check(chatid) == False:
+    if Utils.admin_check(chatid) == False:
         send_message(chatid, "You're not authorized to do this", bot)
         return
 
@@ -399,7 +330,7 @@ def send_message_to_everyone(bot, update, args) -> None:
 
     logging.info(f"{chatid} started sending a message to everyone")
 
-    results=utils.retrieve_query_results("SELECT DISTINCT CHAT_ID FROM CHATURBATE")
+    results=Utils.retrieve_query_results("SELECT DISTINCT CHAT_ID FROM CHATURBATE")
     for row in results:
         chatid_list.append(row[0])
 
@@ -425,7 +356,7 @@ def check_online_status() -> None:
         chatid_dict = {}
 
         # create a dictionary with usernames and online using distinct
-        results=utils.retrieve_query_results("SELECT DISTINCT USERNAME,ONLINE FROM CHATURBATE")
+        results=Utils.retrieve_query_results("SELECT DISTINCT USERNAME,ONLINE FROM CHATURBATE")
         for row in results:
             online_dict[row[0]] = row[1]
             # username row0
@@ -441,7 +372,7 @@ def check_online_status() -> None:
         # obtain chatid
         for username in username_list:
                 chatid_list = []
-                results=utils.retrieve_query_results(f"SELECT CHAT_ID FROM CHATURBATE WHERE USERNAME='{username}'")
+                results=Utils.retrieve_query_results(f"SELECT CHAT_ID FROM CHATURBATE WHERE USERNAME='{username}'")
                 for row in results:
                     chatid_list.append(row[0])
                 chatid_dict[username]=chatid_list            
@@ -462,7 +393,7 @@ def check_online_status() -> None:
 
                         if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content: #check if models still exists
                             logging.info(username.lower()+" is not a model anymore, removing from db")
-                            utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             response_dict[username] = "error" #avoid processing the failed model
                         else:
                             response_json = json.loads(response.content)
@@ -471,11 +402,11 @@ def check_online_status() -> None:
 
     
                     except (json.JSONDecodeError,ConnectionError) as e:
-                        utils.handle_exception(e)
+                        Utils.handle_exception(e)
                         logging.info(username.lower()+" has failed to connect on attempt "+str(attempt))
                         time.sleep(1) #sleep and retry              
                     except Exception as e:
-                        utils.handle_exception(e)
+                        Utils.handle_exception(e)
                         response_dict[username] = "error"
                     
                     else:
@@ -518,7 +449,7 @@ def check_online_status() -> None:
                     if (response["room_status"] == "offline"):
 
                         if online_dict[username] == "T" :
-                            utils.exec_query(
+                            Utils.exec_query(
                                 f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}'")
 
                             for y in chatid_dict[username]:
@@ -527,7 +458,7 @@ def check_online_status() -> None:
 
                     elif online_dict[username] == "F":
 
-                            utils.exec_query(
+                            Utils.exec_query(
                                 f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
 
                             for y in chatid_dict[username]:    
@@ -538,34 +469,34 @@ def check_online_status() -> None:
 
                 elif response != "error" and "401" in str(response['status']):
                         if "This room requires a password" in str(response['detail']) and (online_dict[username] == "F"): #assuming the user knows the password
-                            utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
+                            Utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 send_message(y, f"{username} is now online! You can watch the live here: http://chaturbate.com/{username}", bot)
 
                         if "Room is deleted" in str(response['detail']):
-                            utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 send_message(y, f"{username} has been removed because room has been deleted", bot)
                             logging.info(f"{username} has been removed from database because room has been deleted")
 
                         if "This room has been banned" in str(response['detail']):
-                            utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 send_message(y, f"{username} has been removed because room has been deleted", bot)
                             logging.info(f"{username} has been removed from database because has been banned")
 
                         if "This room is not available to your region or gender." in str(response['detail']):
-                            utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
+                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
                                 send_message(y, f"{username} has been removed because of geoblocking, I'm going to try to fix this soon", bot)
                             logging.info(f"{username} has been removed from database because of geoblocking")          
             except Exception as e:
-                utils.handle_exception(e)
+                Utils.handle_exception(e)
     while(1):
         try:
             update_status()
         except Exception as e:
-            utils.handle_exception(e)
+            Utils.handle_exception(e)
 
 #endregion
 
@@ -597,14 +528,20 @@ dispatcher.add_handler(send_message_to_everyone_handler)
 logging.info('Checking database existence...')
 
 # default table creation
-utils.exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
+Utils.exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
         USERNAME  CHAR(60) NOT NULL,
         CHAT_ID  CHAR(100),
         ONLINE CHAR(1))""")
 
 # admin table creation
-utils.exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
+Utils.exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
         CHAT_ID  CHAR(100))""")
+
+Utils.exec_query('''CREATE TABLE IF NOT EXISTS "PREFERENCES" (
+	"CHAT_ID"	CHAR(100) UNIQUE,
+	"LINK_PREVIEW"	INTEGER DEFAULT 1,
+	PRIMARY KEY("CHAT_ID")
+)''')
 
 logging.info('Starting models checking thread...')
 threading.Thread(target=check_online_status,daemon=True).start()

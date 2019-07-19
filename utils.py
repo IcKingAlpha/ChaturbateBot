@@ -1,8 +1,8 @@
 import logging
 import sqlite3
-import os
+from Argparse_chaturbatebot import args
 
-bot_path = os.getcwd()
+bot_path = args["working_folder"]
 
 
 def handle_exception(e: Exception) -> None:
@@ -59,3 +59,22 @@ def retrieve_query_results(query: str, db_path: str = bot_path) -> list:
         return []  # return empty list
     finally:
         db.close()
+
+
+def admin_check(chatid: str) -> bool:
+    """
+    Checks if user is present in the admin database
+
+    :rtype: bool
+    :param str chatid: chatid
+    :return: True if admin, False if not
+    """
+    admin_list = []
+    results = retrieve_query_results("SELECT * FROM ADMIN")
+    for row in results:
+        admin_list.append(row[0])
+
+    if str(chatid) not in admin_list:
+        return False
+    else:
+        return True
