@@ -42,7 +42,7 @@ def update_link_preview_preference(chatid: str, value: bool) -> None:
     Update the link_preview preference of the user
 
     :param chatid: The chatid of the user who will be tested
-    :param value: The boolean value that will be inserted in the table
+    :param value: The boolean value that will be converted to int and inserted in the table
     """
     if value:
         value = 1

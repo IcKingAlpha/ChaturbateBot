@@ -291,6 +291,23 @@ def stream_image(bot, update, args) -> None:
         send_message(chatid, f"The model {username} is offline, private or does not exist", bot)
         logging.error(f'{chatid} failed to view {username} stream image')
 
+def enable_link_preview(bot, update, args) -> None:
+    chatid = update.message.chat.id
+
+    if len(args) < 1:
+        send_message(chatid,
+                     "You didn't specify the setting\nUse the command like this:\n/enable_link_preview <b>true</b> to enable\n/enable_link_preview <b>false</b> to disable",
+                     bot, html=True)
+        return
+    try:
+        setting=Utils.str2bool(args[0].lower())
+    except Exception as e:
+        Utils.handle_exception(e)
+        send_message(chatid,"An error happened with what you typed",bot)
+    Preferences.update_link_preview_preference(chatid,setting)
+    logging.info(f'{chatid} has set update_link_preview_preference to {setting}')
+    send_message(chatid, f"The link preview preference has been set to {setting}", bot)
+
 
 #endregion
 
@@ -521,6 +538,10 @@ dispatcher.add_handler(list_handler)
 
 stream_image_handler = CommandHandler('stream_image', stream_image, pass_args=True)
 dispatcher.add_handler(stream_image_handler)
+
+enable_link_preview_handler = CommandHandler('enable_link_preview', enable_link_preview, pass_args=True)
+dispatcher.add_handler(enable_link_preview_handler)
+
 
 authorize_admin_handler = CommandHandler(
     'authorize_admin', authorize_admin, pass_args=True)
