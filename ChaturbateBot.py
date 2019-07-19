@@ -32,7 +32,7 @@ bot_path = args["working_folder"]
 wait_time = args["time"]
 http_threads = args["threads"]
 user_limit = args["limit"]
-auto_remove = args["remove"]
+auto_remove = Utils.str2bool(args["remove"])
 admin_pw = args["admin_password"]
 logging_file=args["logging_file"]
 

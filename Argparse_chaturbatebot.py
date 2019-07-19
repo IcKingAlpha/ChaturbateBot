@@ -36,7 +36,6 @@ ap.add_argument(
     "-r",
     "--remove",
     required=False,
-    type=bool,
     default=True,
     help="Should the bot remove from the database anyone whom blocks it? Default = True")
 ap.add_argument(
