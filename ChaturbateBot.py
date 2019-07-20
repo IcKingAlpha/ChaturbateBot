@@ -39,14 +39,15 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 
 
-def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False) -> None:
+def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False, reply__markup=None) -> None:
     """
-    Sends a message to a telegram user
+    Sends a message to a telegram user and sends "typing" action
 
-    :param str chatid: The chatid of the user who will receive the message
-    :param str messaggio: The message who the user will receive
+    :param reply__markup: Parse reply_markup
+    :param chatid: The chatid of the user who will receive the message
+    :param messaggio: The message who the user will receive
     :param bot: telegram bot instance
-    :param bool html: Enable html markdown parsing in the message
+    :param html: Enable html markdown parsing in the message
     """
 
     disable_webpage_preview = not Preferences.get_user_link_preview_preference(
@@ -54,9 +55,15 @@ def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = Fal
 
     try:
         bot.send_chat_action(chat_id=chatid, action="typing")
-        if html:
+        if html and reply_markup!=None:
+            bot.send_message(chat_id=chatid, text=messaggio,
+                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,reply_markup=reply__markup)
+        elif html:
             bot.send_message(chat_id=chatid, text=messaggio,
                              parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview)
+        elif reply__markup!=None:
+            bot.send_message(chat_id=chatid, text=messaggio,disable_web_page_preview=disable_webpage_preview,
+                             reply_markup=reply__markup)
         else:
             bot.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview)
     except Unauthorized:  # user blocked the bot
