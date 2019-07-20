@@ -10,11 +10,8 @@ allow_failures:
 # command to install dependencies
 install:
   - pip install -r requirements.txt
-  - pip install codecov
   - export PYTHONPATH=$PYTHONPATH:$(pwd)
 # command to run tests
 script:
   - python3 ChaturbateBot.py -h
-after_success:
-  - codecov
 
