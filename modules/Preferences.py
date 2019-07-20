@@ -1,5 +1,6 @@
-from modules import Utils
 import logging
+
+from modules import Utils
 
 
 def user_has_preferences(chatid: str) -> bool:

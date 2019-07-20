@@ -1,5 +1,9 @@
+import json
 import logging
 import sqlite3
+
+import requests
+
 from modules.Argparse_chaturbatebot import args
 
 bot_path = args["working_folder"]
@@ -89,3 +93,31 @@ def admin_check(chatid: str) -> bool:
         return False
     else:
         return True
+
+
+def is_model_viewable(model: str) -> bool:
+    """
+    Checks if you can see the model live (without any privilege)
+
+    :param string model: The model's name
+    :rtype: bool
+    """
+    target = f"https://en.chaturbate.com/api/chatvideocontext/{model}"
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
+    response = requests.get(target, headers=headers)
+
+    if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content:  # check if models still exists
+        return False
+    else:
+        response = json.loads(response.content)
+
+    if "status" not in response and response != "error":
+        if response["room_status"] == "offline" or response["room_status"] == "away" or response["room_status"] == "private" or response["room_status"] == "hidden":
+            return False
+    elif "status" in response:  # avoid keyerror
+        if response["status"] == 401:
+            return False
+    elif response == "error":
+        return False
+    return True
