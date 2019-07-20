@@ -27,17 +27,17 @@ http_threads = args["threads"]
 user_limit = args["limit"]
 auto_remove = Utils.str2bool(args["remove"])
 admin_pw = args["admin_password"]
-logging_file=args["logging_file"]
+logging_file = args["logging_file"]
 
-logging_level=logging.INFO
+logging_level = logging.INFO
 if not Utils.str2bool(args["enable_logging"]):
-    logging_level=99 # stupid workaround not to log -> only creates file
+    logging_level = 99  # stupid workaround not to log -> only creates file
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging_level,filename=logging_file)
+                    level=logging_level, filename=logging_file)
 
 
-def send_message(chatid: str, messaggio: str, bot, html: bool=False) -> None:
+def send_message(chatid: str, messaggio: str, bot, html: bool = False) -> None:
     """
     Sends a message to a telegram user
 
@@ -47,16 +47,17 @@ def send_message(chatid: str, messaggio: str, bot, html: bool=False) -> None:
     :param bool html: Enable html markdown parsing in the message
     """
 
-    disable_webpage_preview= not Preferences.get_user_link_preview_preference(chatid) #the setting is opposite of preference
+    disable_webpage_preview = not Preferences.get_user_link_preview_preference(
+        chatid)  # the setting is opposite of preference
 
     try:
         bot.send_chat_action(chat_id=chatid, action="typing")
         if html:
             bot.send_message(chat_id=chatid, text=messaggio,
-                             parse_mode=telegram.ParseMode.HTML,disable_web_page_preview=disable_webpage_preview)
+                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview)
         else:
-            bot.send_message(chat_id=chatid, text=messaggio,disable_web_page_preview=disable_webpage_preview)
-    except Unauthorized: #user blocked the bot
+            bot.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview)
+    except Unauthorized:  # user blocked the bot
         if auto_remove == True:
             logging.info(f"{chatid} blocked the bot, he's been removed from the database")
             Utils.exec_query(f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
@@ -77,6 +78,7 @@ def start(bot, update) -> None:
         "/add username to add an username to check \n/remove username to remove an username\n(you can use /remove <b>all</b> to remove all models at once) \n/list to see which users you are currently following", bot, html=True
     )
 
+
 def is_model_viewable(model: str) -> bool:
     """
     Checks if you can see the model live (without any privilege)
@@ -89,16 +91,17 @@ def is_model_viewable(model: str) -> bool:
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
     response = requests.get(target, headers=headers)
 
-    if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content: #check if models still exists
+    if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content:  # check if models still exists
         return False
     else:
         response = json.loads(response.content)
 
     if ("status" not in response and response != "error"):
-        if (response["room_status"] == "offline" or response["room_status"] == "away" or response["room_status"] == "private" or response["room_status"]=="hidden"):
+        if (response["room_status"] == "offline" or response["room_status"] == "away" or response[
+            "room_status"] == "private" or response["room_status"] == "hidden"):
             return False
-    elif ("status" in response): #avoid keyerror
-        if response["status"]==401: 
+    elif ("status" in response):  # avoid keyerror
+        if response["status"] == 401:
             return False
     elif response == "error":
         return False
