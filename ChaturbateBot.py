@@ -148,7 +148,7 @@ def add(bot, update, args) -> None:
     # 0 is unlimited usernames
     if len(usernames_in_database)+len(username_message_list) > user_limit and (Utils.admin_check(chatid) == False != user_limit != 0):
         send_message(chatid, "You are trying to add more usernames than your limit permits, which is " + str(user_limit), bot)
-        logging.info(f'{chatid} tried to add more usernames than his limit')
+        logging.info(f'{chatid} tried to add more usernames than his limit permits')
         return
 
     headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
