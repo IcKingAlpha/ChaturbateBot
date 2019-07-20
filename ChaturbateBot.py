@@ -3,23 +3,15 @@
 import datetime
 import json
 import logging
-import os
-import os.path
-import sqlite3
 import threading
 import time
-import urllib.request
-from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from queue import Queue
-from pathlib import Path
 
 import requests
 import telegram
 from PIL import Image
-from requests_futures.sessions import FuturesSession
-from telegram.error import (BadRequest, ChatMigrated, NetworkError,
-                            TelegramError, TimedOut, Unauthorized)
+from telegram.error import (Unauthorized)
 from telegram.ext import CommandHandler, Updater
 
 from modules import Preferences
