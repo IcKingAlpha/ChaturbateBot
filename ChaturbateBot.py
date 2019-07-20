@@ -296,17 +296,18 @@ def enable_link_preview(bot, update, args) -> None:
 
     if len(args) < 1:
         send_message(chatid,
-                     "You didn't specify the setting\nUse the command like this:\n/enable_link_preview <b>true</b> to enable\n/enable_link_preview <b>false</b> to disable",
+                     "This commands allow you to disable or enable the link preview in messages\nUse the command like this:\n/enable_link_preview <b>true</b> to enable\n/enable_link_preview <b>false</b> to disable",
                      bot, html=True)
         return
     try:
         setting=Utils.str2bool(args[0].lower())
     except Exception as e:
-        Utils.handle_exception(e)
+        logging.info(f'{chatid} failed to update enable_link_preview to {args[0].lower()}')
         send_message(chatid,"An error happened with what you typed",bot)
-    Preferences.update_link_preview_preference(chatid,setting)
-    logging.info(f'{chatid} has set update_link_preview_preference to {setting}')
-    send_message(chatid, f"The link preview preference has been set to {setting}", bot)
+    else:
+        Preferences.update_link_preview_preference(chatid,setting)
+        logging.info(f'{chatid} has set enable_link_preview to {setting}')
+        send_message(chatid, f"The link preview preference has been set to {setting}", bot)
 
 
 #endregion
