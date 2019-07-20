@@ -11,33 +11,35 @@ from queue import Queue
 import requests
 import telegram
 from PIL import Image
-from telegram.error import (Unauthorized)
-from telegram.ext import CommandHandler, Updater
+from telegram.error import Unauthorized
+from telegram.ext import CommandHandler, Updater, CallbackContext
 
 from modules import Preferences
 from modules import Utils
-from modules.Argparse_chaturbatebot import args
+from modules.Argparse_chaturbatebot import args as argparse_args
 
-updater = Updater(token=args["key"])
+updater = Updater(token=argparse_args["key"], use_context=True)
 dispatcher = updater.dispatcher
+bot=updater.bot # bot class instance
 
-bot_path = args["working_folder"]
-wait_time = args["time"]
-http_threads = args["threads"]
-user_limit = args["limit"]
-auto_remove = Utils.str2bool(args["remove"])
-admin_pw = args["admin_password"]
-logging_file = args["logging_file"]
+bot_path = argparse_args["working_folder"]
+wait_time = argparse_args["time"]
+http_threads = argparse_args["threads"]
+user_limit = argparse_args["limit"]
+auto_remove = Utils.str2bool(argparse_args["remove"])
+admin_pw = argparse_args["admin_password"]
+logging_file = argparse_args["logging_file"]
 
 logging_level = logging.INFO
-if not Utils.str2bool(args["enable_logging"]):
+if not Utils.str2bool(argparse_args["enable_logging"]):
     logging_level = 99  # stupid workaround not to log -> only creates file
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging_level, filename=logging_file)
 
 
-def send_message(chatid: str, messaggio: str, bot, html: bool = False) -> None:
+
+def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False) -> None:
     """
     Sends a message to a telegram user
 
@@ -72,7 +74,8 @@ def send_message(chatid: str, messaggio: str, bot, html: bool = False) -> None:
 #region normal functions
 
 
-def start(bot, update) -> None:
+def start(update, CallbackContext) -> None:
+    global bot
     send_message(
         update.message.chat.id,
         "/add username to add an username to check \n/remove username to remove an username\n(you can use /remove <b>all</b> to remove all models at once) \n/list to see which users you are currently following", bot, html=True
@@ -80,7 +83,9 @@ def start(bot, update) -> None:
 
 
 
-def add(bot, update, args) -> None:
+def add(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat_id
     username_message_list=[]
     if len(args) < 1:
@@ -164,7 +169,9 @@ def add(bot, update, args) -> None:
             logging.info(f'{chatid} could not add {username} because an error happened')
 
 
-def remove(bot, update, args) -> None:
+def remove(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat.id
     username_message_list = []
     usernames_in_database=[]
@@ -207,7 +214,8 @@ def remove(bot, update, args) -> None:
 
 
 #Todo: test for null results list and improve the code
-def list_command(bot, update) -> None:
+def list_command(update, CallbackContext) -> None:
+    global bot
     chatid = update.message.chat.id
     username_list = []
     online_list = []
@@ -237,7 +245,9 @@ def list_command(bot, update) -> None:
             chatid, f"You are currently following these {len(username_list)} users:\n" +
             followed_users, bot, html=True)
 
-def stream_image(bot, update, args) -> None:
+def stream_image(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat.id
 
     if len(args) < 1:
@@ -259,7 +269,9 @@ def stream_image(bot, update, args) -> None:
         send_message(chatid, f"The model {username} is offline, private or does not exist", bot)
         logging.error(f'{chatid} failed to view {username} stream image')
 
-def enable_link_preview(bot, update, args) -> None:
+def enable_link_preview(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat.id
 
     if len(args) < 1:
@@ -282,9 +294,11 @@ def enable_link_preview(bot, update, args) -> None:
 
 #region admin functions
 
-def authorize_admin(bot, update, args) -> None:
-
+def authorize_admin(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat_id
+
     if len(args) != 1:
         send_message(
             chatid,
@@ -308,7 +322,9 @@ def authorize_admin(bot, update, args) -> None:
         send_message(chatid, "The password is wrong", bot)
 
 
-def send_message_to_everyone(bot, update, args) -> None:
+def send_message_to_everyone(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat.id
 
     if Utils.admin_check(chatid) == False:
@@ -340,8 +356,7 @@ def send_message_to_everyone(bot, update, args) -> None:
 #region threads
 
 def check_online_status() -> None:
-    global updater
-    bot = updater.bot
+    global bot
     def update_status() -> None :
         username_list = []
         online_dict = {}
@@ -496,28 +511,28 @@ def check_online_status() -> None:
 start_handler = CommandHandler(('start', 'help'), start)
 dispatcher.add_handler(start_handler)
 
-add_handler = CommandHandler('add', add, pass_args=True)
+add_handler = CommandHandler('add', add)
 dispatcher.add_handler(add_handler)
 
-remove_handler = CommandHandler('remove', remove, pass_args=True)
+remove_handler = CommandHandler('remove', remove)
 dispatcher.add_handler(remove_handler)
 
 list_handler = CommandHandler('list', list_command)
 dispatcher.add_handler(list_handler)
 
-stream_image_handler = CommandHandler('stream_image', stream_image, pass_args=True)
+stream_image_handler = CommandHandler('stream_image', stream_image)
 dispatcher.add_handler(stream_image_handler)
 
-enable_link_preview_handler = CommandHandler('enable_link_preview', enable_link_preview, pass_args=True)
+enable_link_preview_handler = CommandHandler('enable_link_preview', enable_link_preview)
 dispatcher.add_handler(enable_link_preview_handler)
 
 
 authorize_admin_handler = CommandHandler(
-    'authorize_admin', authorize_admin, pass_args=True)
+    'authorize_admin', authorize_admin)
 dispatcher.add_handler(authorize_admin_handler)
 
 send_message_to_everyone_handler = CommandHandler(
-    'send_message_to_everyone', send_message_to_everyone, pass_args=True)
+    'send_message_to_everyone', send_message_to_everyone)
 dispatcher.add_handler(send_message_to_everyone_handler)
 
 
