@@ -12,7 +12,8 @@ import requests
 import telegram
 from PIL import Image
 from telegram.error import Unauthorized
-from telegram.ext import CommandHandler, Updater, CallbackContext
+from telegram.ext import CommandHandler, Updater, CallbackContext, CallbackQueryHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from modules import Preferences
 from modules import Utils
@@ -39,11 +40,11 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 
 
-def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False, reply__markup=None) -> None:
+def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False, markup=None) -> None:
     """
     Sends a message to a telegram user and sends "typing" action
 
-    :param reply__markup: Parse reply_markup
+    :param markup: The reply_markup to use when sending the message
     :param chatid: The chatid of the user who will receive the message
     :param messaggio: The message who the user will receive
     :param bot: telegram bot instance
@@ -55,15 +56,15 @@ def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = Fal
 
     try:
         bot.send_chat_action(chat_id=chatid, action="typing")
-        if html and reply_markup!=None:
+        if html and markup!=None:
             bot.send_message(chat_id=chatid, text=messaggio,
-                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,reply_markup=reply__markup)
+                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,reply_markup=markup)
         elif html:
             bot.send_message(chat_id=chatid, text=messaggio,
                              parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview)
-        elif reply__markup!=None:
+        elif markup!=None:
             bot.send_message(chat_id=chatid, text=messaggio,disable_web_page_preview=disable_webpage_preview,
-                             reply_markup=reply__markup)
+                             reply_markup=markup)
         else:
             bot.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview)
     except Unauthorized:  # user blocked the bot
@@ -83,8 +84,8 @@ def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = Fal
 
 def start(update, CallbackContext) -> None:
     global bot
-    send_message(
-        update.message.chat.id,
+    chatid=update.message.chat.id
+    send_message(chatid,
         "/add username to add an username to check \n/remove username to remove an username\n(you can use /remove <b>all</b> to remove all models at once) \n/list to see which users you are currently following", bot, html=True
     )
 
@@ -276,25 +277,79 @@ def stream_image(update, CallbackContext) -> None:
         send_message(chatid, f"The model {username} is offline, private or does not exist", bot)
         logging.error(f'{chatid} failed to view {username} stream image')
 
-def enable_link_preview(update, CallbackContext) -> None:
-    global bot
-    args=CallbackContext.args
-    chatid = update.message.chat.id
 
-    if len(args) < 1:
-        send_message(chatid,
-                     "This commands allow you to disable or enable the link preview in messages\nUse the command like this:\n/enable_link_preview <b>true</b> to enable\n/enable_link_preview <b>false</b> to disable",
-                     bot, html=True)
-        return
-    try:
-        setting=Utils.str2bool(args[0].lower())
-    except Exception as e:
-        logging.info(f'{chatid} failed to update enable_link_preview to {args[0].lower()}')
-        send_message(chatid,"An error happened with what you typed",bot)
+#endregion
+
+#region settings
+
+settings_menu_keyboard = [[InlineKeyboardButton("Link preview", callback_data='link_preview_menu'),
+                 InlineKeyboardButton("Disable notifications", callback_data='disable_notifications_menu')]]
+
+def settings(update, CallbackContext):
+    global bot
+    global settings_menu_keyboard
+
+    message_markup = InlineKeyboardMarkup(settings_menu_keyboard)
+
+    #Todo show actual settings values in message
+
+    if update.callback_query:
+        update.callback_query.edit_message_text(text='Here are your settings:',reply_markup=message_markup)
     else:
-        Preferences.update_link_preview_preference(chatid,setting)
-        logging.info(f'{chatid} has set enable_link_preview to {setting}')
-        send_message(chatid, f"The link preview preference has been set to {setting}", bot)
+        chatid = update.message.chat.id
+        send_message(chatid,'Here are your settings:',bot,markup=message_markup)
+
+def link_preview_callback(update, CallbackContext):
+    query = update.callback_query
+
+    keyboard = [[InlineKeyboardButton("True", callback_data='link_preview_callback_True'),
+                 InlineKeyboardButton("False", callback_data='link_preview_callback_False'),
+                 InlineKeyboardButton("Back", callback_data='settings_menu')]]
+
+    markup = InlineKeyboardMarkup(keyboard)
+
+
+    query.edit_message_text(text=f"Select an option:",reply_markup=markup)
+
+
+def link_preview_callback_update_value(update, CallbackContext):
+    query = update.callback_query
+    chatid=query.message.chat.id
+
+    keyboard = [[InlineKeyboardButton("Settings", callback_data='settings_menu')]]
+    keyboard = InlineKeyboardMarkup(keyboard)
+
+    if query.data=="link_preview_callback_True":
+        setting=True
+    else:
+        setting=False
+
+    Preferences.update_link_preview_preference(chatid,setting)
+    logging.info(f'{chatid} has set enable_link_preview to {setting}')
+    query.edit_message_text(text=f"The link preview preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
+
+#Todo implement option2
+'''
+def button2(update, CallbackContext):
+    query = update.callback_query
+    
+    keyboard=[[InlineKeyboardButton("Back", callback_data='settings_menu')]]
+
+    query.edit_message_text(text=f"EL PSY KONGROO: {query.data}")
+'''
+
+#Todo implement option3
+'''
+def button3(update, CallbackContext):
+    query = update.callback_query
+    
+    keyboard=[[InlineKeyboardButton("Back", callback_data='settings_menu')]]
+
+    query.edit_message_text(text=f"EL PSY KONGROO: {query.data}")
+'''
+
+
+
 
 
 #endregion
@@ -515,32 +570,31 @@ def check_online_status() -> None:
 #endregion
 
 
-start_handler = CommandHandler(('start', 'help'), start)
-dispatcher.add_handler(start_handler)
+dispatcher.add_handler(CommandHandler(('start', 'help'), start))
 
-add_handler = CommandHandler('add', add)
-dispatcher.add_handler(add_handler)
+dispatcher.add_handler(CommandHandler('add', add))
 
-remove_handler = CommandHandler('remove', remove)
-dispatcher.add_handler(remove_handler)
+dispatcher.add_handler(CommandHandler('remove', remove))
 
-list_handler = CommandHandler('list', list_command)
-dispatcher.add_handler(list_handler)
+dispatcher.add_handler(CommandHandler('list', list_command))
 
-stream_image_handler = CommandHandler('stream_image', stream_image)
-dispatcher.add_handler(stream_image_handler)
+dispatcher.add_handler(CommandHandler('stream_image', stream_image))
 
-enable_link_preview_handler = CommandHandler('enable_link_preview', enable_link_preview)
-dispatcher.add_handler(enable_link_preview_handler)
+dispatcher.add_handler(CommandHandler('settings', settings))
 
+dispatcher.add_handler(CallbackQueryHandler(link_preview_callback, pattern='link_preview_menu'))
 
-authorize_admin_handler = CommandHandler(
-    'authorize_admin', authorize_admin)
-dispatcher.add_handler(authorize_admin_handler)
+dispatcher.add_handler(CallbackQueryHandler(link_preview_callback_update_value, pattern='link_preview_callback_True|link_preview_callback_False'))
 
-send_message_to_everyone_handler = CommandHandler(
-    'send_message_to_everyone', send_message_to_everyone)
-dispatcher.add_handler(send_message_to_everyone_handler)
+dispatcher.add_handler(CallbackQueryHandler(settings, pattern='settings_menu'))
+
+'''
+dispatcher.add_handler(CallbackQueryHandler(button2,pattern='disable_notifications_menu'))
+'''
+
+dispatcher.add_handler(CommandHandler('authorize_admin', authorize_admin))
+
+dispatcher.add_handler(CommandHandler('send_message_to_everyone', send_message_to_everyone))
 
 
 logging.info('Checking database existence...')
