@@ -44,7 +44,6 @@ def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = Fal
     """
     Sends a message to a telegram user and sends "typing" action
 
-    :param notification: Enable or disable notifications of the message
     :param markup: The reply_markup to use when sending the message
     :param chatid: The chatid of the user who will receive the message
     :param messaggio: The message who the user will receive
