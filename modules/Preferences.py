@@ -70,7 +70,7 @@ def get_user_link_preview_preference(chatid: str) -> bool:
         return True
 
 
-def update_notifications_preference(chatid: str, value: bool) -> None:
+def update_notifications_sound_preference(chatid: str, value: bool) -> None:
     """
     Update the notifications preference of the user
 
@@ -82,10 +82,10 @@ def update_notifications_preference(chatid: str, value: bool) -> None:
     else:
         value = 0
 
-    Utils.exec_query(f"UPDATE PREFERENCES SET NOTIFICATIONS='{value}' WHERE CHAT_ID='{chatid}'")
+    Utils.exec_query(f"UPDATE PREFERENCES SET NOTIFICATIONS_SOUND='{value}' WHERE CHAT_ID='{chatid}'")
 
 
-def get_user_notifications_preference(chatid: str) -> bool:
+def get_user_notifications_sound_preference(chatid: str) -> bool:
     """
     Retrieve the notifications preference of the user
 
@@ -95,7 +95,7 @@ def get_user_notifications_preference(chatid: str) -> bool:
     if not user_has_preferences(chatid):
         add_user_to_preferences(chatid)
 
-    results = Utils.retrieve_query_results(f"SELECT NOTIFICATIONS FROM PREFERENCES WHERE CHAT_ID={chatid}")
+    results = Utils.retrieve_query_results(f"SELECT NOTIFICATIONS_SOUND FROM PREFERENCES WHERE CHAT_ID={chatid}")
     if results[0][0] == 0:
         return False
     else:

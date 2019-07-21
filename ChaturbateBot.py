@@ -54,7 +54,7 @@ def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = Fal
 
     disable_webpage_preview = not Preferences.get_user_link_preview_preference(chatid)  # the setting is opposite of preference
 
-    notification = not Preferences.get_user_notifications_preference(chatid) # the setting is opposite of preference
+    notification = not Preferences.get_user_notifications_sound_preference(chatid) # the setting is opposite of preference
 
     try:
         bot.send_chat_action(chat_id=chatid, action="typing")
@@ -285,7 +285,7 @@ def stream_image(update, CallbackContext) -> None:
 #region settings
 
 settings_menu_keyboard = [[InlineKeyboardButton("Link preview", callback_data='link_preview_menu'),
-                 InlineKeyboardButton("Notifications", callback_data='notifications_menu_menu')]]
+                 InlineKeyboardButton("Notifications sound", callback_data='notifications_sound_menu')]]
 
 def settings(update, CallbackContext):
     global bot
@@ -295,8 +295,8 @@ def settings(update, CallbackContext):
     message_markup = InlineKeyboardMarkup(settings_menu_keyboard)
 
     Link_preview_setting = Preferences.get_user_link_preview_preference(chatid)
-    Notification_setting = Preferences.get_user_notifications_preference(chatid)
-    settings_message= f"Here are your settings:\nLink preview: <b>{Link_preview_setting}</b>\nNotifications: <b>{Notification_setting}</b>"
+    Notifications_sound_setting = Preferences.get_user_notifications_sound_preference(chatid)
+    settings_message= f"Here are your settings:\nLink preview: <b>{Link_preview_setting}</b>\nNotifications: <b>{Notifications_sound_setting}</b>"
 
     if update.callback_query:
         update.callback_query.edit_message_text(text=settings_message,reply_markup=message_markup,parse_mode=telegram.ParseMode.HTML)
@@ -313,7 +313,7 @@ def link_preview_callback(update, CallbackContext):
     markup = InlineKeyboardMarkup(keyboard)
 
 
-    query.edit_message_text(text=f"Select an option:",reply_markup=markup)
+    query.edit_message_text(text=f"Select an option",reply_markup=markup)
 
 
 def link_preview_callback_update_value(update, CallbackContext):
@@ -333,38 +333,33 @@ def link_preview_callback_update_value(update, CallbackContext):
     query.edit_message_text(text=f"The link preview preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
 
 
-def notifications_callback(update, CallbackContext):
+def notifications_sound_callback(update, CallbackContext):
     query = update.callback_query
 
-    keyboard = [[InlineKeyboardButton("True", callback_data='notifications_callback_True'),
-                 InlineKeyboardButton("False", callback_data='notifications_callback_False'),
-                 InlineKeyboardButton("Back", callback_data='notifications_menu')]]
+    keyboard = [[InlineKeyboardButton("True", callback_data='notifications_sound_callback_True'),
+                 InlineKeyboardButton("False", callback_data='notifications_sound_callback_False'),
+                 InlineKeyboardButton("Back", callback_data='settings_menu')]]
 
     markup = InlineKeyboardMarkup(keyboard)
 
 
-    query.edit_message_text(text=f"Select an option:",reply_markup=markup)
+    query.edit_message_text(text=f"Select an option",reply_markup=markup)
 
-def notifications_callback_update_value(update, CallbackContext):
+def notifications_sound_callback_update_value(update, CallbackContext):
     query = update.callback_query
     chatid=query.message.chat.id
 
     keyboard = [[InlineKeyboardButton("Settings", callback_data='settings_menu')]]
     keyboard = InlineKeyboardMarkup(keyboard)
 
-    if query.data=="notifications_callback_True":
+    if query.data=="notifications_sound_callback_True":
         setting=True
     else:
         setting=False
 
-    Preferences.update_notifications_preference(chatid,setting)
-    logging.info(f'{chatid} has set notifications to {setting}')
-    query.edit_message_text(text=f"The notifications preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
-
-
-
-
-
+    Preferences.update_notifications_sound_preference(chatid,setting)
+    logging.info(f'{chatid} has set notifications sound to {setting}')
+    query.edit_message_text(text=f"The notifications sound preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
 
 #endregion
 
@@ -600,15 +595,12 @@ dispatcher.add_handler(CallbackQueryHandler(link_preview_callback, pattern='link
 
 dispatcher.add_handler(CallbackQueryHandler(link_preview_callback_update_value, pattern='link_preview_callback_True|link_preview_callback_False'))
 
-dispatcher.add_handler(CallbackQueryHandler(notifications_callback, pattern='notifications_menu'))
+dispatcher.add_handler(CallbackQueryHandler(notifications_sound_callback, pattern='notifications_sound_menu'))
 
-dispatcher.add_handler(CallbackQueryHandler(notifications_callback_update_value, pattern='notifications_callback_True|notifications_callback_False'))
+dispatcher.add_handler(CallbackQueryHandler(notifications_sound_callback_update_value, pattern='notifications_sound_callback_True|notifications_sound_callback_False'))
 
 dispatcher.add_handler(CallbackQueryHandler(settings, pattern='settings_menu'))
 
-'''
-dispatcher.add_handler(CallbackQueryHandler(button2,pattern='disable_notifications_menu'))
-'''
 
 dispatcher.add_handler(CommandHandler('authorize_admin', authorize_admin))
 
@@ -630,7 +622,7 @@ Utils.exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
 Utils.exec_query('''CREATE TABLE IF NOT EXISTS "PREFERENCES" (
 	"CHAT_ID"	CHAR(100) UNIQUE,
 	"LINK_PREVIEW"	INTEGER DEFAULT 1,
-	"NOTIFICATIONS"	INTEGER DEFAULT 1,
+	"NOTIFICATIONS_SOUND"	INTEGER DEFAULT 1,
 	PRIMARY KEY("CHAT_ID")
 )''')
 
