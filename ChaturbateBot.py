@@ -290,16 +290,18 @@ settings_menu_keyboard = [[InlineKeyboardButton("Link preview", callback_data='l
 def settings(update, CallbackContext):
     global bot
     global settings_menu_keyboard
+    chatid = update.effective_chat.id
 
     message_markup = InlineKeyboardMarkup(settings_menu_keyboard)
 
-    #Todo show actual settings values in message
+    Link_preview_setting = Preferences.get_user_link_preview_preference(chatid)
+    Notification_setting = Preferences.get_user_notifications_preference(chatid)
+    settings_message= f"Here are your settings:\nLink preview: <b>{Link_preview_setting}</b>\nNotifications: <b>{Notification_setting}</b>"
 
     if update.callback_query:
-        update.callback_query.edit_message_text(text='Here are your settings:',reply_markup=message_markup)
+        update.callback_query.edit_message_text(text=settings_message,reply_markup=message_markup,parse_mode=telegram.ParseMode.HTML)
     else:
-        chatid = update.message.chat.id
-        send_message(chatid,'Here are your settings:',bot,markup=message_markup)
+        send_message(chatid,settings_message,bot,markup=message_markup,html=True)
 
 def link_preview_callback(update, CallbackContext):
     query = update.callback_query
