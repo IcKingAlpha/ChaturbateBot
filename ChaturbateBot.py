@@ -11,52 +11,63 @@ from queue import Queue
 import requests
 import telegram
 from PIL import Image
-from telegram.error import (Unauthorized)
-from telegram.ext import CommandHandler, Updater
+from telegram.error import Unauthorized
+from telegram.ext import CommandHandler, Updater, CallbackContext, CallbackQueryHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from modules import Preferences
 from modules import Utils
-from modules.Argparse_chaturbatebot import args
+from modules.Argparse_chaturbatebot import args as argparse_args
 
-updater = Updater(token=args["key"])
+updater = Updater(token=argparse_args["key"], use_context=True)
 dispatcher = updater.dispatcher
+bot=updater.bot # bot class instance
 
-bot_path = args["working_folder"]
-wait_time = args["time"]
-http_threads = args["threads"]
-user_limit = args["limit"]
-auto_remove = Utils.str2bool(args["remove"])
-admin_pw = args["admin_password"]
-logging_file = args["logging_file"]
+bot_path = argparse_args["working_folder"]
+wait_time = argparse_args["time"]
+http_threads = argparse_args["threads"]
+user_limit = argparse_args["limit"]
+auto_remove = Utils.str2bool(argparse_args["remove"])
+admin_pw = argparse_args["admin_password"]
+logging_file = argparse_args["logging_file"]
 
 logging_level = logging.INFO
-if not Utils.str2bool(args["enable_logging"]):
+if not Utils.str2bool(argparse_args["enable_logging"]):
     logging_level = 99  # stupid workaround not to log -> only creates file
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging_level, filename=logging_file)
 
 
-def send_message(chatid: str, messaggio: str, bot, html: bool = False) -> None:
-    """
-    Sends a message to a telegram user
 
-    :param str chatid: The chatid of the user who will receive the message
-    :param str messaggio: The message who the user will receive
+def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False, markup=None) -> None:
+    """
+    Sends a message to a telegram user and sends "typing" action
+
+    :param markup: The reply_markup to use when sending the message
+    :param chatid: The chatid of the user who will receive the message
+    :param messaggio: The message who the user will receive
     :param bot: telegram bot instance
-    :param bool html: Enable html markdown parsing in the message
+    :param html: Enable html markdown parsing in the message
     """
 
-    disable_webpage_preview = not Preferences.get_user_link_preview_preference(
-        chatid)  # the setting is opposite of preference
+    disable_webpage_preview = not Preferences.get_user_link_preview_preference(chatid)  # the setting is opposite of preference
+
+    notification = not Preferences.get_user_notifications_sound_preference(chatid) # the setting is opposite of preference
 
     try:
         bot.send_chat_action(chat_id=chatid, action="typing")
-        if html:
+        if html and markup!=None:
             bot.send_message(chat_id=chatid, text=messaggio,
-                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview)
+                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,reply_markup=markup,disable_notification=notification)
+        elif html:
+            bot.send_message(chat_id=chatid, text=messaggio,
+                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,disable_notification=notification)
+        elif markup!=None:
+            bot.send_message(chat_id=chatid, text=messaggio,disable_web_page_preview=disable_webpage_preview,
+                             reply_markup=markup,disable_notification=notification)
         else:
-            bot.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview)
+            bot.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview,disable_notification=notification)
     except Unauthorized:  # user blocked the bot
         if auto_remove == True:
             logging.info(f"{chatid} blocked the bot, he's been removed from the database")
@@ -72,15 +83,18 @@ def send_message(chatid: str, messaggio: str, bot, html: bool = False) -> None:
 #region normal functions
 
 
-def start(bot, update) -> None:
-    send_message(
-        update.message.chat.id,
+def start(update, CallbackContext) -> None:
+    global bot
+    chatid=update.message.chat.id
+    send_message(chatid,
         "/add username to add an username to check \n/remove username to remove an username\n(you can use /remove <b>all</b> to remove all models at once) \n/list to see which users you are currently following", bot, html=True
     )
 
 
 
-def add(bot, update, args) -> None:
+def add(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat_id
     username_message_list=[]
     if len(args) < 1:
@@ -164,7 +178,9 @@ def add(bot, update, args) -> None:
             logging.info(f'{chatid} could not add {username} because an error happened')
 
 
-def remove(bot, update, args) -> None:
+def remove(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat.id
     username_message_list = []
     usernames_in_database=[]
@@ -207,7 +223,8 @@ def remove(bot, update, args) -> None:
 
 
 #Todo: test for null results list and improve the code
-def list_command(bot, update) -> None:
+def list_command(update, CallbackContext) -> None:
+    global bot
     chatid = update.message.chat.id
     username_list = []
     online_list = []
@@ -237,7 +254,9 @@ def list_command(bot, update) -> None:
             chatid, f"You are currently following these {len(username_list)} users:\n" +
             followed_users, bot, html=True)
 
-def stream_image(bot, update, args) -> None:
+def stream_image(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat.id
 
     if len(args) < 1:
@@ -259,32 +278,97 @@ def stream_image(bot, update, args) -> None:
         send_message(chatid, f"The model {username} is offline, private or does not exist", bot)
         logging.error(f'{chatid} failed to view {username} stream image')
 
-def enable_link_preview(bot, update, args) -> None:
-    chatid = update.message.chat.id
 
-    if len(args) < 1:
-        send_message(chatid,
-                     "This commands allow you to disable or enable the link preview in messages\nUse the command like this:\n/enable_link_preview <b>true</b> to enable\n/enable_link_preview <b>false</b> to disable",
-                     bot, html=True)
-        return
-    try:
-        setting=Utils.str2bool(args[0].lower())
-    except Exception as e:
-        logging.info(f'{chatid} failed to update enable_link_preview to {args[0].lower()}')
-        send_message(chatid,"An error happened with what you typed",bot)
+#endregion
+
+#region settings
+
+settings_menu_keyboard = [[InlineKeyboardButton("Link preview", callback_data='link_preview_menu'),
+                 InlineKeyboardButton("Notifications sound", callback_data='notifications_sound_menu')]]
+
+def settings(update, CallbackContext):
+    global bot
+    global settings_menu_keyboard
+    chatid = update.effective_chat.id
+
+    message_markup = InlineKeyboardMarkup(settings_menu_keyboard)
+
+    Link_preview_setting = Preferences.get_user_link_preview_preference(chatid)
+    Notifications_sound_setting = Preferences.get_user_notifications_sound_preference(chatid)
+    settings_message= f"Here are your settings:\nLink preview: <b>{Link_preview_setting}</b>\nNotifications: <b>{Notifications_sound_setting}</b>"
+
+    if update.callback_query:
+        update.callback_query.edit_message_text(text=settings_message,reply_markup=message_markup,parse_mode=telegram.ParseMode.HTML)
     else:
-        Preferences.update_link_preview_preference(chatid,setting)
-        logging.info(f'{chatid} has set enable_link_preview to {setting}')
-        send_message(chatid, f"The link preview preference has been set to {setting}", bot)
+        send_message(chatid,settings_message,bot,markup=message_markup,html=True)
 
+def link_preview_callback(update, CallbackContext):
+    query = update.callback_query
+
+    keyboard = [[InlineKeyboardButton("True", callback_data='link_preview_callback_True'),
+                 InlineKeyboardButton("False", callback_data='link_preview_callback_False'),
+                 InlineKeyboardButton("Back", callback_data='settings_menu')]]
+
+    markup = InlineKeyboardMarkup(keyboard)
+
+
+    query.edit_message_text(text=f"Select an option",reply_markup=markup)
+
+
+def link_preview_callback_update_value(update, CallbackContext):
+    query = update.callback_query
+    chatid=query.message.chat.id
+
+    keyboard = [[InlineKeyboardButton("Settings", callback_data='settings_menu')]]
+    keyboard = InlineKeyboardMarkup(keyboard)
+
+    if query.data=="link_preview_callback_True":
+        setting=True
+    else:
+        setting=False
+
+    Preferences.update_link_preview_preference(chatid,setting)
+    logging.info(f'{chatid} has set link preview to {setting}')
+    query.edit_message_text(text=f"The link preview preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
+
+
+def notifications_sound_callback(update, CallbackContext):
+    query = update.callback_query
+
+    keyboard = [[InlineKeyboardButton("True", callback_data='notifications_sound_callback_True'),
+                 InlineKeyboardButton("False", callback_data='notifications_sound_callback_False'),
+                 InlineKeyboardButton("Back", callback_data='settings_menu')]]
+
+    markup = InlineKeyboardMarkup(keyboard)
+
+
+    query.edit_message_text(text=f"Select an option",reply_markup=markup)
+
+def notifications_sound_callback_update_value(update, CallbackContext):
+    query = update.callback_query
+    chatid=query.message.chat.id
+
+    keyboard = [[InlineKeyboardButton("Settings", callback_data='settings_menu')]]
+    keyboard = InlineKeyboardMarkup(keyboard)
+
+    if query.data=="notifications_sound_callback_True":
+        setting=True
+    else:
+        setting=False
+
+    Preferences.update_notifications_sound_preference(chatid,setting)
+    logging.info(f'{chatid} has set notifications sound to {setting}')
+    query.edit_message_text(text=f"The notifications sound preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
 
 #endregion
 
 #region admin functions
 
-def authorize_admin(bot, update, args) -> None:
-
+def authorize_admin(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat_id
+
     if len(args) != 1:
         send_message(
             chatid,
@@ -308,7 +392,9 @@ def authorize_admin(bot, update, args) -> None:
         send_message(chatid, "The password is wrong", bot)
 
 
-def send_message_to_everyone(bot, update, args) -> None:
+def send_message_to_everyone(update, CallbackContext) -> None:
+    global bot
+    args=CallbackContext.args
     chatid = update.message.chat.id
 
     if Utils.admin_check(chatid) == False:
@@ -340,8 +426,7 @@ def send_message_to_everyone(bot, update, args) -> None:
 #region threads
 
 def check_online_status() -> None:
-    global updater
-    bot = updater.bot
+    global bot
     def update_status() -> None :
         username_list = []
         online_dict = {}
@@ -493,32 +578,32 @@ def check_online_status() -> None:
 #endregion
 
 
-start_handler = CommandHandler(('start', 'help'), start)
-dispatcher.add_handler(start_handler)
+dispatcher.add_handler(CommandHandler(('start', 'help'), start))
 
-add_handler = CommandHandler('add', add, pass_args=True)
-dispatcher.add_handler(add_handler)
+dispatcher.add_handler(CommandHandler('add', add))
 
-remove_handler = CommandHandler('remove', remove, pass_args=True)
-dispatcher.add_handler(remove_handler)
+dispatcher.add_handler(CommandHandler('remove', remove))
 
-list_handler = CommandHandler('list', list_command)
-dispatcher.add_handler(list_handler)
+dispatcher.add_handler(CommandHandler('list', list_command))
 
-stream_image_handler = CommandHandler('stream_image', stream_image, pass_args=True)
-dispatcher.add_handler(stream_image_handler)
+dispatcher.add_handler(CommandHandler('stream_image', stream_image))
 
-enable_link_preview_handler = CommandHandler('enable_link_preview', enable_link_preview, pass_args=True)
-dispatcher.add_handler(enable_link_preview_handler)
+dispatcher.add_handler(CommandHandler('settings', settings))
+
+dispatcher.add_handler(CallbackQueryHandler(link_preview_callback, pattern='link_preview_menu'))
+
+dispatcher.add_handler(CallbackQueryHandler(link_preview_callback_update_value, pattern='link_preview_callback_True|link_preview_callback_False'))
+
+dispatcher.add_handler(CallbackQueryHandler(notifications_sound_callback, pattern='notifications_sound_menu'))
+
+dispatcher.add_handler(CallbackQueryHandler(notifications_sound_callback_update_value, pattern='notifications_sound_callback_True|notifications_sound_callback_False'))
+
+dispatcher.add_handler(CallbackQueryHandler(settings, pattern='settings_menu'))
 
 
-authorize_admin_handler = CommandHandler(
-    'authorize_admin', authorize_admin, pass_args=True)
-dispatcher.add_handler(authorize_admin_handler)
+dispatcher.add_handler(CommandHandler('authorize_admin', authorize_admin))
 
-send_message_to_everyone_handler = CommandHandler(
-    'send_message_to_everyone', send_message_to_everyone, pass_args=True)
-dispatcher.add_handler(send_message_to_everyone_handler)
+dispatcher.add_handler(CommandHandler('send_message_to_everyone', send_message_to_everyone))
 
 
 logging.info('Checking database existence...')
@@ -536,6 +621,7 @@ Utils.exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
 Utils.exec_query('''CREATE TABLE IF NOT EXISTS "PREFERENCES" (
 	"CHAT_ID"	CHAR(100) UNIQUE,
 	"LINK_PREVIEW"	INTEGER DEFAULT 1,
+	"NOTIFICATIONS_SOUND"	INTEGER DEFAULT 1,
 	PRIMARY KEY("CHAT_ID")
 )''')
 
