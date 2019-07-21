@@ -40,10 +40,11 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 
 
-def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False, markup=None) -> None:
+def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False, markup=None, notification: bool = True) -> None:
     """
     Sends a message to a telegram user and sends "typing" action
 
+    :param notification: Enable or disable notifications of the message
     :param markup: The reply_markup to use when sending the message
     :param chatid: The chatid of the user who will receive the message
     :param messaggio: The message who the user will receive
@@ -54,19 +55,21 @@ def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = Fal
     disable_webpage_preview = not Preferences.get_user_link_preview_preference(
         chatid)  # the setting is opposite of preference
 
+    notification = not notification # the setting is opposite of preference
+
     try:
         bot.send_chat_action(chat_id=chatid, action="typing")
         if html and markup!=None:
             bot.send_message(chat_id=chatid, text=messaggio,
-                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,reply_markup=markup)
+                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,reply_markup=markup,disable_notification=notification)
         elif html:
             bot.send_message(chat_id=chatid, text=messaggio,
-                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview)
+                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,disable_notification=notification)
         elif markup!=None:
             bot.send_message(chat_id=chatid, text=messaggio,disable_web_page_preview=disable_webpage_preview,
-                             reply_markup=markup)
+                             reply_markup=markup,disable_notification=notification)
         else:
-            bot.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview)
+            bot.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview,disable_notification=notification)
     except Unauthorized:  # user blocked the bot
         if auto_remove == True:
             logging.info(f"{chatid} blocked the bot, he's been removed from the database")
