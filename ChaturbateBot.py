@@ -40,7 +40,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 
 
-def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False, markup=None, notification: bool = True) -> None:
+def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False, markup=None) -> None:
     """
     Sends a message to a telegram user and sends "typing" action
 
@@ -52,10 +52,9 @@ def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = Fal
     :param html: Enable html markdown parsing in the message
     """
 
-    disable_webpage_preview = not Preferences.get_user_link_preview_preference(
-        chatid)  # the setting is opposite of preference
+    disable_webpage_preview = not Preferences.get_user_link_preview_preference(chatid)  # the setting is opposite of preference
 
-    notification = not notification # the setting is opposite of preference
+    notification = not Preferences.get_user_notifications_preference(chatid) # the setting is opposite of preference
 
     try:
         bot.send_chat_action(chat_id=chatid, action="typing")
@@ -286,7 +285,7 @@ def stream_image(update, CallbackContext) -> None:
 #region settings
 
 settings_menu_keyboard = [[InlineKeyboardButton("Link preview", callback_data='link_preview_menu'),
-                 InlineKeyboardButton("Disable notifications", callback_data='disable_notifications_menu')]]
+                 InlineKeyboardButton("Notifications", callback_data='notifications_menu_menu')]]
 
 def settings(update, CallbackContext):
     global bot
@@ -328,28 +327,38 @@ def link_preview_callback_update_value(update, CallbackContext):
         setting=False
 
     Preferences.update_link_preview_preference(chatid,setting)
-    logging.info(f'{chatid} has set enable_link_preview to {setting}')
+    logging.info(f'{chatid} has set link preview to {setting}')
     query.edit_message_text(text=f"The link preview preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
 
-#Todo implement option2
-'''
-def button2(update, CallbackContext):
+
+def notifications_callback(update, CallbackContext):
     query = update.callback_query
-    
-    keyboard=[[InlineKeyboardButton("Back", callback_data='settings_menu')]]
 
-    query.edit_message_text(text=f"EL PSY KONGROO: {query.data}")
-'''
+    keyboard = [[InlineKeyboardButton("True", callback_data='notifications_callback_True'),
+                 InlineKeyboardButton("False", callback_data='notifications_callback_False'),
+                 InlineKeyboardButton("Back", callback_data='notifications_menu')]]
 
-#Todo implement option3
-'''
-def button3(update, CallbackContext):
+    markup = InlineKeyboardMarkup(keyboard)
+
+
+    query.edit_message_text(text=f"Select an option:",reply_markup=markup)
+
+def notifications_callback_update_value(update, CallbackContext):
     query = update.callback_query
-    
-    keyboard=[[InlineKeyboardButton("Back", callback_data='settings_menu')]]
+    chatid=query.message.chat.id
 
-    query.edit_message_text(text=f"EL PSY KONGROO: {query.data}")
-'''
+    keyboard = [[InlineKeyboardButton("Settings", callback_data='settings_menu')]]
+    keyboard = InlineKeyboardMarkup(keyboard)
+
+    if query.data=="notifications_callback_True":
+        setting=True
+    else:
+        setting=False
+
+    Preferences.update_notifications_preference(chatid,setting)
+    logging.info(f'{chatid} has set notifications to {setting}')
+    query.edit_message_text(text=f"The notifications preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
+
 
 
 
@@ -589,6 +598,10 @@ dispatcher.add_handler(CallbackQueryHandler(link_preview_callback, pattern='link
 
 dispatcher.add_handler(CallbackQueryHandler(link_preview_callback_update_value, pattern='link_preview_callback_True|link_preview_callback_False'))
 
+dispatcher.add_handler(CallbackQueryHandler(notifications_callback, pattern='notifications_menu'))
+
+dispatcher.add_handler(CallbackQueryHandler(notifications_callback_update_value, pattern='notifications_callback_True|notifications_callback_False'))
+
 dispatcher.add_handler(CallbackQueryHandler(settings, pattern='settings_menu'))
 
 '''
@@ -615,6 +628,7 @@ Utils.exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
 Utils.exec_query('''CREATE TABLE IF NOT EXISTS "PREFERENCES" (
 	"CHAT_ID"	CHAR(100) UNIQUE,
 	"LINK_PREVIEW"	INTEGER DEFAULT 1,
+	"NOTIFICATIONS"	INTEGER DEFAULT 1,
 	PRIMARY KEY("CHAT_ID")
 )''')
 
