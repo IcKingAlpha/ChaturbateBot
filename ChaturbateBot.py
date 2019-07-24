@@ -276,7 +276,7 @@ def stream_image(update, CallbackContext) -> None:
         logging.info(f'{chatid} viewed {username} stream image')
     else:
         send_message(chatid, f"The model {username} is offline, private or does not exist", bot)
-        logging.error(f'{chatid} failed to view {username} stream image')
+        logging.warn(f'{chatid} failed to view {username} stream image')
 
 
 #endregion
