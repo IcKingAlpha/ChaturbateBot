@@ -294,7 +294,11 @@ def settings(update, CallbackContext):
     message_markup = InlineKeyboardMarkup(settings_menu_keyboard)
 
     Link_preview_setting = Preferences.get_user_link_preview_preference(chatid)
+    Link_preview_setting= Utils.bool_to_status(Link_preview_setting)
+
     Notifications_sound_setting = Preferences.get_user_notifications_sound_preference(chatid)
+    Notifications_sound_setting= Utils.bool_to_status(Notifications_sound_setting)
+
     settings_message= f"Here are your settings:\nLink preview: <b>{Link_preview_setting}</b>\nNotifications: <b>{Notifications_sound_setting}</b>"
 
     if update.callback_query:
@@ -305,8 +309,8 @@ def settings(update, CallbackContext):
 def link_preview_callback(update, CallbackContext):
     query = update.callback_query
 
-    keyboard = [[InlineKeyboardButton("True", callback_data='link_preview_callback_True'),
-                 InlineKeyboardButton("False", callback_data='link_preview_callback_False'),
+    keyboard = [[InlineKeyboardButton("Enable", callback_data='link_preview_callback_True'),
+                 InlineKeyboardButton("Disable", callback_data='link_preview_callback_False'),
                  InlineKeyboardButton("Back", callback_data='settings_menu')]]
 
     markup = InlineKeyboardMarkup(keyboard)
@@ -328,6 +332,8 @@ def link_preview_callback_update_value(update, CallbackContext):
         setting=False
 
     Preferences.update_link_preview_preference(chatid,setting)
+    setting=Utils.bool_to_status(setting)
+
     logging.info(f'{chatid} has set link preview to {setting}')
     query.edit_message_text(text=f"The link preview preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
 
@@ -335,8 +341,8 @@ def link_preview_callback_update_value(update, CallbackContext):
 def notifications_sound_callback(update, CallbackContext):
     query = update.callback_query
 
-    keyboard = [[InlineKeyboardButton("True", callback_data='notifications_sound_callback_True'),
-                 InlineKeyboardButton("False", callback_data='notifications_sound_callback_False'),
+    keyboard = [[InlineKeyboardButton("Enable", callback_data='notifications_sound_callback_True'),
+                 InlineKeyboardButton("Disable", callback_data='notifications_sound_callback_False'),
                  InlineKeyboardButton("Back", callback_data='settings_menu')]]
 
     markup = InlineKeyboardMarkup(keyboard)
@@ -357,6 +363,8 @@ def notifications_sound_callback_update_value(update, CallbackContext):
         setting=False
 
     Preferences.update_notifications_sound_preference(chatid,setting)
+    setting = Utils.bool_to_status(setting)
+
     logging.info(f'{chatid} has set notifications sound to {setting}')
     query.edit_message_text(text=f"The notifications sound preference has been set to <b>{setting}</b>",reply_markup=keyboard,parse_mode=telegram.ParseMode.HTML)
 

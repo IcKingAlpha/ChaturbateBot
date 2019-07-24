@@ -20,12 +20,25 @@ def handle_exception(e: Exception) -> None:
 def str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+    if v.lower() in ('yes', 'true', 't', 'y', '1', 'enable', 'enabled'):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    elif v.lower() in ('no', 'false', 'f', 'n', '0', 'disable', 'disabled'):
         return False
     else:
         raise ValueError('Boolean value expected.')
+
+
+def bool_to_status(value: bool) -> str:
+    """
+    Checks the bool and returns "Enabled" if True, "Disabled" if False
+
+    :param value: The bool to convert
+    :return: "Enabled" if True, "Disabled" if False
+    """
+    if value:
+        return "Enabled"
+    else:
+        return "Disabled"
 
 
 def sanitize_username(username: str) -> str:
