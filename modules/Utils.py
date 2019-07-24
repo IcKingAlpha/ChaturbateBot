@@ -28,6 +28,16 @@ def str2bool(v):
         raise ValueError('Boolean value expected.')
 
 
+def sanitize_username(username: str) -> str:
+    """
+    Sanitizes an username for http requests
+
+    :param username: The username to sanitize
+    :return: The sanitized username
+    """
+    return username.lower().replace("/", "")
+
+
 def exec_query(query: str, db_path: str = bot_path) -> None:
     """Executes a SQL query
 
@@ -102,6 +112,7 @@ def is_model_viewable(model: str) -> bool:
     :param string model: The model's name
     :rtype: bool
     """
+    model = sanitize_username(model)
     target = f"https://en.chaturbate.com/api/chatvideocontext/{model}"
     headers = {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
@@ -113,7 +124,7 @@ def is_model_viewable(model: str) -> bool:
         response = json.loads(response.content)
 
     if "status" not in response and response != "error":
-        if response["room_status"] == "offline" or response["room_status"] == "away" or response["room_status"] == "private" or response["room_status"] == "hidden":
+        if response["room_status"] == ("offline" or "away" or "private" or "hidden"):
             return False
     elif "status" in response:  # avoid keyerror
         if response["status"] == 401:

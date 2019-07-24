@@ -107,14 +107,14 @@ def add(update, CallbackContext) -> None:
     if len(args)>1:
         for username in args:
             if username!="":
-                username_message_list.append(username.replace(" ","").replace(",",""))
+                username_message_list.append(Utils.sanitize_username(username).replace(",",""))
     # len(args)==0 -> only one username or all in one line
     elif "," in args[0].lower():
         for splitted_username in args[0].lower().replace(" ","").rstrip().split(","):
             if splitted_username!="":
-             username_message_list.append(splitted_username)
+             username_message_list.append(Utils.sanitize_username(splitted_username))
     else:
-        username_message_list.append(args[0].lower())
+        username_message_list.append(Utils.sanitize_username(args[0]))
 
     username_message_list=list(dict.fromkeys(username_message_list)) #remove duplicate usernames
     
@@ -194,14 +194,14 @@ def remove(update, CallbackContext) -> None:
     if len(args)>1:
         for username in args:
             if username!="":
-                username_message_list.append(username.replace(" ","").replace(",",""))
+                username_message_list.append(Utils.sanitize_username(username).replace(",",""))
     # len(args)==0 -> only one username or all in one line
     elif "," in args[0].lower():
         for splitted_username in args[0].lower().replace(" ","").rstrip().split(","):
             if splitted_username!="":
-             username_message_list.append(splitted_username)
+             username_message_list.append(Utils.sanitize_username(splitted_username))
     else:
-        username_message_list.append(args[0].lower())
+        username_message_list.append(Utils.sanitize_username(args[0]))
 
     results=Utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
     for row in results:
@@ -263,7 +263,7 @@ def stream_image(update, CallbackContext) -> None:
         send_message(chatid, "You didn't specify a model to get the stream image of\nUse the command like this: /stream_image <b>username</b>", bot, html=True)
         return
 
-    username=args[0].lower()
+    username=Utils.sanitize_username(args[0])
     if Utils.is_model_viewable(username):
         model_image=Image.open(BytesIO(requests.get(f'https://roomimg.stream.highwebmedia.com/ri/{username}.jpg').content))
         bio = BytesIO()
