@@ -615,10 +615,14 @@ def check_online_status() -> None:
         for username in username_list:
             model_test_instance = Model(username)  # Todo: remove this!
             response = response_dict[username]
-            keyboard = [[InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}'),
-                         InlineKeyboardButton("Update stream image",
-                                              callback_data='view_stream_image_callback_' + username)]]
-            markup = InlineKeyboardMarkup(keyboard)
+            keyboard_with_link_preview = [[InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}'),
+                                           InlineKeyboardButton("Update stream image",callback_data='view_stream_image_callback_' + username)]]
+            keyboard_without_link_preview = [
+                [InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}')]]
+            markup_with_link_preview = InlineKeyboardMarkup(keyboard)
+            markup_without_link_preview = InlineKeyboardMarkup(keyboard)
+
+
 
             try:
 
@@ -639,8 +643,11 @@ def check_online_status() -> None:
                             f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
 
                         for y in chatid_dict[username]:
-                            send_image(y, model_test_instance.model_image, bot, markup=markup,
+                            if Preferences.get_user_link_preview_preference(y):
+                                send_image(y, model_test_instance.model_image, bot, markup=markup_with_link_preview,
                                        caption=f"{username} is now <b>online</b>!", html=True)
+                            else:
+                                send_message(y,f"{username} is now <b>online</b>!",bot,html=True,markup=markup_without_link_preview)
 
 
 
@@ -650,8 +657,11 @@ def check_online_status() -> None:
                             online_dict[username] == "F"):  # assuming the user knows the password
                         Utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
                         for y in chatid_dict[username]:
-                            send_image(y, model_test_instance.model_image, bot, markup=markup,
-                                       caption=f"{username} is now <b>online</b>!", html=True)
+                            if Preferences.get_user_link_preview_preference(y):
+                                send_image(y, model_test_instance.model_image, bot, markup=markup_with_link_preview,
+                                           caption=f"{username} is now <b>online</b>!", html=True)
+                            else:
+                                send_message(y, f"{username} is now <b>online</b>!", bot, html=True, markup=markup_without_link_preview)
 
                     if "Room is deleted" in str(response['detail']):
                         Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
