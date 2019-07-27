@@ -619,8 +619,8 @@ def check_online_status() -> None:
                                            InlineKeyboardButton("Update stream image",callback_data='view_stream_image_callback_' + username)]]
             keyboard_without_link_preview = [
                 [InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}')]]
-            markup_with_link_preview = InlineKeyboardMarkup(keyboard)
-            markup_without_link_preview = InlineKeyboardMarkup(keyboard)
+            markup_with_link_preview = InlineKeyboardMarkup(keyboard_with_link_preview)
+            markup_without_link_preview = InlineKeyboardMarkup(keyboard_without_link_preview)
 
 
 
