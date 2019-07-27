@@ -357,7 +357,7 @@ def view_stream_image_callback(update, CallbackContext):
 
     try:
         bot.edit_message_media(chat_id=chatid, message_id=messageid,
-                               media=telegram.InputMediaPhoto(model_instance.model_image), reply_markup=markup)
+                               media=telegram.InputMediaPhoto(model_instance.model_image,caption=f"{username} is now <b>online</b>!",parse_mode=telegram.ParseMode.HTML), reply_markup=markup)
     except Exception as e:
         if "Message is not modified" in e.message:
             pass  # Todo show user that this is the latest update
