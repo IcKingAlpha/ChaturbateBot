@@ -21,8 +21,6 @@ class Model:
         self.username = username
         self.autoupdate = autoupdate
 
-        self.update_model_status()
-
     @property
     def status(self):
         if self.__status is None:
