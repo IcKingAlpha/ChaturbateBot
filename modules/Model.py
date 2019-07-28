@@ -51,20 +51,10 @@ class Model:
 
     @property
     def model_image(self):
-        self.update_model_image()
-        if self.__model_image is None:
-            if self.status == "offline":
-                raise Exceptions.ModelOffline
-            elif self.status == "away":
-                raise Exceptions.ModelAway
-            elif self.status == ("private" or "hidden"):
-                raise Exceptions.ModelPrivate
-            elif self.status == "password":
-                raise Exceptions.ModelPassword
-            else:
-                raise Exceptions.ModelNotViewable
-        else:
-            return self.__model_image
+        if self.autoupdate:
+            self.update_model_image()
+
+        return self.__model_image
 
     @model_image.setter
     def model_image(self, value):
@@ -129,12 +119,34 @@ class Model:
 
     def update_model_image(self):
         if self.online and self.status != "password":
-            model_image = Image.open(
-                BytesIO(requests.get(f'https://roomimg.stream.highwebmedia.com/ri/{self.username}.jpg').content))
-            bio = BytesIO()
-            bio.name = 'image.jpeg'
-            model_image.save(bio, 'JPEG')
-            bio.seek(0)
-            self.model_image = bio
+            attempt_count = 0
+            for attempt in range(5):
+                try:
+                    model_image = Image.open(
+                        BytesIO(
+                            requests.get(f'https://roomimg.stream.highwebmedia.com/ri/{self.username}.jpg').content))
+                    bio = BytesIO()
+                    bio.name = 'image.jpeg'
+                    model_image.save(bio, 'JPEG')
+                    bio.seek(0)
+                    self.model_image = bio
+                except Exception as e:
+                    Utils.handle_exception(e)
+                    attempt_count += 1
+                    logging.info(self.username + " has failed to obtain image on attempt " + str(attempt))
+                    time.sleep(1)  # sleep and retry
+                else:
+                    break
+            if attempt_count == 5:
+                logging.info(self.username + " has failed to obtain image after all attempts")
+                raise ConnectionError
+        elif self.status == "offline":
+            raise Exceptions.ModelOffline
+        elif self.status == "away":
+            raise Exceptions.ModelAway
+        elif self.status == ("private" or "hidden"):
+            raise Exceptions.ModelPrivate
+        elif self.status == "password":
+            raise Exceptions.ModelPassword
         else:
-            self.model_image = None
+            raise Exceptions.ModelNotViewable
