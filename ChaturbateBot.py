@@ -329,19 +329,22 @@ def stream_image(update, CallbackContext) -> None:
         logging.info(f'{chatid} viewed {username} stream image')
     except Exceptions.ModelPrivate:
         send_message(chatid, f"The model {username} is in private now, try again later", bot)
-        logging.warning(f'{chatid} failed to view {username} stream image')
+        logging.warning(f'{chatid} could not view {username} stream image because is private')
     except Exceptions.ModelAway:
         send_message(chatid, f"The model {username} is away, try again later", bot)
-        logging.warning(f'{chatid} failed to view {username} stream image')
+        logging.warning(f'{chatid} could not view {username} stream image because is away')
     except Exceptions.ModelOffline:
         send_message(chatid, f"The model {username} is offline", bot)
-        logging.warning(f'{chatid} failed to view {username} stream image')
-    except Exceptions.ModelNotViewable:
-        send_message(chatid, f"The model {username} probably does not exist", bot)
-        logging.warning(f'{chatid} failed to view {username} stream image')
+        logging.warning(f'{chatid} could not view {username} stream image because is offline')
     except Exceptions.ModelPassword:
         send_message(chatid, f"The model {username} cannot be seen because is password protected", bot)
-        logging.warning(f'{chatid} failed to view {username} stream image')
+        logging.warning(f'{chatid} could not view {username} stream image because is password protected')
+    except Exceptions.ModelNotViewable:
+        send_message(chatid, f"The model {username} probably does not exist", bot)
+        logging.warning(f'{chatid} could not view {username} stream image')
+    except ConnectionError:
+        send_message(chatid, f"The model {username} cannot be seen because of connection issues, try again later", bot)
+        logging.warning(f'{chatid} could not view {username} stream image because of connection issues')
 
 
 def view_stream_image_callback(update, CallbackContext):
@@ -557,46 +560,26 @@ def check_online_status() -> None:
             chatid_dict[username] = chatid_list  # assign chatid list to every model
 
         # Threaded function for queue processing.
-        def crawl(q, response_dict):
+        def crawl(q, model_instances_dict):
             while not q.empty():
                 work = q.get()  # fetch new work from the Queue
+                username = Utils.sanitize_username(work[1])
+                model_instance=Model(username,autoupdate=False)
+                model_instance.update_model_status()
+                #Todo: handle update model image exceptions
+                try:
+                    model_instance.update_model_image()
+                except Exception as e:
+                    model_instance.model_image=None #set to None just to be secure Todo: this may be extra
 
-                for attempt in range(5):  # try to connect 5 times as there are a lot of network disruptions
-                    try:
-                        username = work[1]
-                        target = f"https://en.chaturbate.com/api/chatvideocontext/{username.lower()}"
-                        headers = {
-                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
-                        response = requests.get(target, headers=headers)
-
-                        if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content:  # check if models still exists
-                            logging.info(username.lower() + " is not a model anymore, removing from db")
-                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
-                            response_dict[username] = "error"  # avoid processing the failed model
-                        else:
-                            response_json = json.loads(response.content)
-                            response_dict[username] = response_json
-
-
-
-                    except (json.JSONDecodeError, ConnectionError) as e:
-                        Utils.handle_exception(e)
-                        logging.info(username.lower() + " has failed to connect on attempt " + str(attempt))
-                        time.sleep(1)  # sleep and retry
-                    except Exception as e:
-                        Utils.handle_exception(e)
-                        response_dict[username] = "error"
-
-                    else:
-                        break
-
+                model_instances_dict[username] = model_instance
                 # signal to the queue that task has been processed
                 q.task_done()
             return True
 
         q = Queue(maxsize=0)
         # Populating Queue with tasks
-        response_dict = {}
+        model_instances_dict = {}
 
         # load up the queue with the username_list to fetch and the index for each job (as a tuple):
         for i in range(len(username_list)):
@@ -605,7 +588,7 @@ def check_online_status() -> None:
 
             # Starting worker threads on queue processing
         for i in range(http_threads):
-            worker = threading.Thread(target=crawl, args=(q, response_dict), daemon=True)
+            worker = threading.Thread(target=crawl, args=(q, model_instances_dict), daemon=True)
             worker.start()
             time.sleep(wait_time)  # avoid server spamming by time-limiting the start of requests
 
@@ -613,8 +596,7 @@ def check_online_status() -> None:
         q.join()
 
         for username in username_list:
-            model_test_instance = Model(username)  # Todo: remove this!
-            response = response_dict[username]
+            model_instance = model_instances_dict[username]
             keyboard_with_link_preview = [[InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}'),
                                            InlineKeyboardButton("Update stream image",callback_data='view_stream_image_callback_' + username)]]
             keyboard_without_link_preview = [
@@ -626,8 +608,8 @@ def check_online_status() -> None:
 
             try:
 
-                if response != "error" and "status" not in response:
-                    if (response["room_status"] == "offline"):
+                if model_instance.status != "error":
+                    if not model_instance.online:
 
                         if online_dict[username] == "T":
                             Utils.exec_query(
@@ -639,43 +621,38 @@ def check_online_status() -> None:
 
                     elif online_dict[username] == "F":
 
-                        Utils.exec_query(
-                            f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
+                        if model_instance.status == "password":  # assuming the user knows the password
+                            Utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
+                            for y in chatid_dict[username]:
+                                    send_message(y, f"{username} is now <b>online</b>!\nNo link preview can be provided because of password protection", bot, html=True,
+                                                 markup=markup_without_link_preview)
+                        else:
+                            Utils.exec_query(
+                                f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
 
-                        for y in chatid_dict[username]:
-                            if Preferences.get_user_link_preview_preference(y):
-                                send_image(y, model_test_instance.model_image, bot, markup=markup_with_link_preview,
-                                       caption=f"{username} is now <b>online</b>!", html=True)
-                            else:
-                                send_message(y,f"{username} is now <b>online</b>!",bot,html=True,markup=markup_without_link_preview)
-
-
-
-
-                elif response != "error" and "401" in str(response['status']):
-                    if "This room requires a password" in str(response['detail']) and (
-                            online_dict[username] == "F"):  # assuming the user knows the password
-                        Utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
-                        for y in chatid_dict[username]:
-                            if Preferences.get_user_link_preview_preference(y):
-                                send_image(y, model_test_instance.model_image, bot, markup=markup_with_link_preview,
+                            for y in chatid_dict[username]:
+                                if Preferences.get_user_link_preview_preference(y) and model_instance.model_image != None:
+                                    send_image(y, model_instance.model_image, bot, markup=markup_with_link_preview,
                                            caption=f"{username} is now <b>online</b>!", html=True)
-                            else:
-                                send_message(y, f"{username} is now <b>online</b>!", bot, html=True, markup=markup_without_link_preview)
+                                else:
+                                    send_message(y,f"{username} is now <b>online</b>!",bot,html=True,markup=markup_without_link_preview)
 
-                    if "Room is deleted" in str(response['detail']):
+
+
+
+                    if model_instance.status=="deleted":
                         Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                         for y in chatid_dict[username]:
                             send_message(y, f"{username} has been removed because room has been deleted", bot)
                         logging.info(f"{username} has been removed from database because room has been deleted")
 
-                    if "This room has been banned" in str(response['detail']):
+                    elif model_instance.status=="banned":
                         Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                         for y in chatid_dict[username]:
-                            send_message(y, f"{username} has been removed because room has been deleted", bot)
+                            send_message(y, f"{username} has been removed because room has been banned", bot)
                         logging.info(f"{username} has been removed from database because has been banned")
 
-                    if "This room is not available to your region or gender." in str(response['detail']):
+                    elif model_instance.status=="geoblocked":
                         Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
                         for y in chatid_dict[username]:
                             send_message(y,
