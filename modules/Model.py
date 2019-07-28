@@ -6,6 +6,7 @@ import requests
 from PIL import Image
 from modules import Exceptions
 from modules import Utils
+import logging
 
 
 class Model:
@@ -75,14 +76,17 @@ class Model:
         response = requests.get(target, headers=headers)
 
         if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content:  # check if models still exists
-            return False
-        try:
-            if response.status_code == 401:
-                self.status = "password"
-                self.online = True
-                return
-        except Exception as e:
-            Utils.handle_exception(e)
+            self.status = "error"
+            self.online = False
+        if response.status_code == 401:
+            self.status = "password"
+            self.online = True
+            return
+        elif response.status_code != 200:
+            logging.error(f'{self.username} got a {response.status_code} error')
+            self.status = "error"
+            self.online = False
+            return
         else:
             response = json.loads(response.content)
             self.status = response["room_status"]
