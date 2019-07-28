@@ -1,5 +1,6 @@
 import datetime
 import json
+import time
 from io import BytesIO
 
 import requests
@@ -12,6 +13,7 @@ import logging
 class Model:
 
     def __init__(self, username, autoupdate=True):
+        self._response = None
         self.__model_image = None
         self.__online = None
         self.__status = None
@@ -69,27 +71,56 @@ class Model:
         self.__model_image = value
 
     def update_model_status(self):
-        self.last_update = datetime.datetime.now()
-        target = f"https://en.chaturbate.com/api/chatvideocontext/{self.username}"
-        headers = {
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
-        response = requests.get(target, headers=headers)
+        for attempt in range(5):
+            # noinspection PyBroadException
+            try:
+                self.last_update = datetime.datetime.now()
+                target = f"https://en.chaturbate.com/api/chatvideocontext/{self.username}"
+                headers = {
+                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
+                self._response = requests.get(target, headers=headers)
+            except (json.JSONDecodeError, ConnectionError) as e:
+                Utils.handle_exception(e)
+                logging.info(self.username + " has failed to connect on attempt " + str(attempt))
+                time.sleep(1)  # sleep and retry
+            except Exception as e:
+                Utils.handle_exception(e)
+                logging.info(self.username + " has incurred in an unknown exception")
+                self.status = "error"
+                self.online = False
+            else:
+                break
 
-        if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content:  # check if models still exists
+        if self._response is None:
+            logging.info(self.username + " has failed to connect after all attempts")
             self.status = "error"
             self.online = False
-        if response.status_code == 401:
-            self.status = "password"
-            self.online = True
+        elif b"It's probably just a broken link, or perhaps a cancelled broadcaster." in self._response.content:  # check if models still exists
+            self.status = "error"
+            self.online = False
             return
-        elif response.status_code != 200:
-            logging.error(f'{self.username} got a {response.status_code} error')
+        elif self._response.status_code == 401:
+            self._response = json.loads(self._response.content)
+            if "Room is deleted" in str(self._response['detail']):
+                self.status = "deleted"
+            elif "This room has been banned" in str(self._response['detail']):
+                self.status = "banned"
+            elif "This room is not available to your region or gender." in str(self._response['detail']):
+                self.status = "geoblocked"
+            elif "This room requires a password" in str(self._response['detail']):
+                self.status = "password"
+                self.online = True
+            else:
+                self.online = False
+            return
+        elif self._response.status_code == (200 and 401):
+            logging.error(f'{self.username} got a {self._response.status_code} error')
             self.status = "error"
             self.online = False
             return
         else:
-            response = json.loads(response.content)
-            self.status = response["room_status"]
+            self._response = json.loads(self._response.content)
+            self.status = self._response["room_status"]
 
         if self.status == "error" or self.status == ("offline" or "away" or "private" or "hidden"):
             self.online = False
