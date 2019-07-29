@@ -567,16 +567,10 @@ def check_online_status() -> None:
                 username = Utils.sanitize_username(work[1])
                 model_instance=Model(username,autoupdate=False)
                 model_instance.update_model_status()
-                #Todo: handle update model image exceptions better
-                if model_instance.online and model_instance.status != "password":
-                    try:
-                        model_instance.update_model_image()
-                    except Exception as e:
-                        logging.info(model_instance.online)
-                        logging.info(model_instance.status)
-                        logging.error(e)
-                        logging.info("setting to none")
-                        model_instance.model_image = None  # set to None just to be secure Todo: this may be extra
+                try:
+                    model_instance.update_model_image()
+                except Exception as e:
+                    model_instance.model_image = None  # set to None just to be secure Todo: this may be extra
 
                 model_instances_dict[username] = model_instance
                 # signal to the queue that task has been processed
@@ -619,10 +613,10 @@ def check_online_status() -> None:
 
                     if model_instance.online and online_dict[username] == "F":
 
-                        if model_instance.status == "password":  # assuming the user knows the password
+                        if model_instance.status in {"away", "private", "hidden", "password"}:  # assuming the user knows the password
                             Utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
                             for y in chatid_dict[username]:
-                                    send_message(y, f"{username} is now <b>online</b>!\nNo link preview can be provided because of password protection", bot, html=True,
+                                    send_message(y, f"{username} is now <b>online</b>!\n<i>No link preview can be provided</i>", bot, html=True,
                                                  markup=markup_without_link_preview)
                         else:
                             Utils.exec_query(

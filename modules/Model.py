@@ -51,8 +51,12 @@ class Model:
     def model_image(self):
         if self.autoupdate:
             self.update_model_image()
-        self.__model_image.seek(0)  # see https://bit.ly/2YtCQ7e
-        return self.__model_image
+        try:
+            self.__model_image.seek(0)  # see https://bit.ly/2YtCQ7e
+        except AttributeError:
+            return None
+        else:
+            return self.__model_image
 
     @model_image.setter
     def model_image(self, value):
@@ -110,13 +114,13 @@ class Model:
             self._response = json.loads(self._response.content)
             self.status = self._response["room_status"]
 
-        if self.status in {"offline", "away", "private", "hidden", "error"}:
+        if self.status in {"offline", "error"}:
             self.online = False
         else:
             self.online = True
 
     def update_model_image(self):
-        if self.online and self.status != "password":
+        if self.online and self.status not in {"away", "private", "hidden", "password"}:
             attempt_count = 0
             for attempt in range(5):
                 try:
@@ -137,7 +141,7 @@ class Model:
             raise Exceptions.ModelOffline
         elif self.status == "away":
             raise Exceptions.ModelAway
-        elif self.status == ("private" or "hidden"):
+        elif self.status in {"private", "hidden"}:
             raise Exceptions.ModelPrivate
         elif self.status == "password":
             raise Exceptions.ModelPassword
