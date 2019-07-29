@@ -155,7 +155,7 @@ def add(update, CallbackContext) -> None:
             bot, html=True
         )
         return
-    # not lowercase usernames bug the api calls
+
     if len(args) > 1:
         for username in args:
             if username != "":
@@ -170,14 +170,11 @@ def add(update, CallbackContext) -> None:
 
     username_message_list = list(dict.fromkeys(username_message_list))  # remove duplicate usernames
 
-    usernames_in_database = []
-    # obtain present usernames
-    results = Utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
-    for row in results:
-        usernames_in_database.append(row[0])
+    # obtain usernames in database associated with current chat_id
+    chat_id_db_usernames = Utils.retrieve_query_results(f"SELECT USERNAME FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
 
     # 0 is unlimited usernames
-    if len(usernames_in_database) + len(username_message_list) > user_limit and (
+    if len(chat_id_db_usernames) + len(username_message_list) > user_limit and (
             Utils.admin_check(chatid) == False != user_limit != 0):
         send_message(chatid,
                      "You are trying to add more usernames than your limit permits, which is " + str(user_limit), bot)
@@ -213,7 +210,7 @@ def add(update, CallbackContext) -> None:
                     logging.info(f"{chatid} could not add {username} because is banned")
 
             else:
-                if username not in usernames_in_database:
+                if username not in chat_id_db_usernames:
                     Utils.exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
                     if 'detail' in response_json:
                         if "This room requires a password" in str(response_json['detail']):
