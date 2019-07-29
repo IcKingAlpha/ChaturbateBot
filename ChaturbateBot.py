@@ -172,7 +172,7 @@ def add(update, CallbackContext) -> None:
 
     usernames_in_database = []
     # obtain present usernames
-    results = Utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+    results = Utils.retrieve_query_results(f"SELECT USERNAME FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
     for row in results:
         usernames_in_database.append(row[0])
 
@@ -184,51 +184,27 @@ def add(update, CallbackContext) -> None:
         logging.info(f'{chatid} tried to add more usernames than his limit permits')
         return
 
-    headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
 
     for username in username_message_list:
-        try:
-            target = f"https://en.chaturbate.com/api/chatvideocontext/{username}"
-            response = requests.get(target, headers=headers)
-
-            # check if the response can be actually be parsed
-            if b"It's probably just a broken link, or perhaps a cancelled broadcaster." in response.content:  # check if models still exists
-                send_message(chatid, f"{username} was not added because it doesn't exist", bot)
-                logging.info(f'{chatid} tried to add {username}, which does not exist')
-                return
-            else:
-                response_json = json.loads(response.content)
-
-            # check for not existing models and errors
-            if (("status" in response_json) and ("401" in str(response_json['status'])) and (
-                    "This room requires a password" not in str(response_json['detail']))):
-
-                if "Room is deleted" in str(response_json['detail']):
-                    send_message(chatid, f"{username} has not been added because room has been deleted", bot)
-                    logging.info(f"{chatid} could not add {username} because room has been deleted")
-
-                if "This room has been banned" in str(response_json['detail']):
-                    send_message(chatid, f"{username} has not been added because is banned", bot)
-                    logging.info(f"{chatid} could not add {username} because is banned")
-
-            else:
-                if username not in usernames_in_database:
+        model_instance=Model(username)
+        if model_instance.status not in ('deleted', 'banned', 'geoblocked', 'canceled', 'error'):
+            if username not in usernames_in_database:
                     Utils.exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
-                    if 'detail' in response_json:
-                        if "This room requires a password" in str(response_json['detail']):
-                            send_message(chatid,
-                                         f"{username} uses a password for his/her room, it has been added but tracking could be unstable",
-                                         bot)
-                            logging.info(f'{chatid} added {username}')
-                    else:
-                        send_message(chatid, f"{username} has been added", bot)
-                        logging.info(f'{chatid} added {username}')
-                else:
-                    send_message(chatid, f"{username} has already been added", bot)
-
-        except Exception as e:
-            Utils.handle_exception(e)
+                    send_message(chatid, f"{username} has been added", bot)
+                    logging.info(f'{chatid} added {username}')
+        elif model_instance.status=='deleted':
+            send_message(chatid, f"{username} has not been added because is deleted", bot)
+            logging.info(f"{chatid} could not add {username} because is deleted")
+        elif model_instance.status=='banned':
+            send_message(chatid, f"{username} has not been added because is banned", bot)
+            logging.info(f"{chatid} could not add {username} because is banned")
+        elif model_instance.status=='geoblocked':
+            send_message(chatid, f"{username} has not been added because is geoblocked+", bot)
+            logging.info(f"{chatid} could not add {username} because is geoblocked+")
+        elif model_instance.status=='canceled':
+            send_message(chatid, f"{username} was not added because it doesn't exist", bot)
+            logging.info(f'{chatid} tried to add {username}, which does not exist')
+        elif model_instance.status=='error':
             send_message(chatid, f"{username} was not added because an error happened", bot)
             logging.info(f'{chatid} could not add {username} because an error happened')
 
