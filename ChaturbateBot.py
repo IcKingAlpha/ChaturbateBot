@@ -362,9 +362,10 @@ def view_stream_image_callback(update, CallbackContext):
         bot.edit_message_media(chat_id=chatid, message_id=messageid,
                                media=telegram.InputMediaPhoto(model_instance.model_image,caption=f"{username} is now <b>online</b>!",parse_mode=telegram.ParseMode.HTML), reply_markup=markup)
     except Exception as e:
-        if "Message is not modified" in e.message:
-            pass  # Todo show user that this is the latest update
-            send_message(chatid, f"This is the latest update of {username}", bot)
+        
+        if hasattr(e, 'message'):
+            if "Message is not modified" in e.message:
+                send_message(chatid, f"This is the latest update of {username}", bot)
         else:
             send_message(chatid, f"{username} cannot be updated, is probably offline", bot)
             logging.info(f"{username} cannot be updated, is probably offline")
@@ -567,10 +568,15 @@ def check_online_status() -> None:
                 model_instance=Model(username,autoupdate=False)
                 model_instance.update_model_status()
                 #Todo: handle update model image exceptions
-                try:
-                    model_instance.update_model_image()
-                except Exception as e:
-                    model_instance.model_image=None #set to None just to be secure Todo: this may be extra
+                if model_instance.online and model_instance.status != "password":
+                    try:
+                        model_instance.update_model_image()
+                    except Exception as e:
+                        logging.info(model_instance.online)
+                        logging.info(model_instance.status)
+                        logging.error(e)
+                        logging.info("setting to none")
+                        model_instance.model_image = None  # set to None just to be secure Todo: this may be extra
 
                 model_instances_dict[username] = model_instance
                 # signal to the queue that task has been processed
