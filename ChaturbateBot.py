@@ -554,27 +554,18 @@ def check_online_status() -> None:
 
     def update_status() -> None:
         username_list = []
-        online_dict = {}
-        chatid_dict = {}
+        chat_and_online_dict={}
 
         # create a dictionary with usernames and online using distinct
-        results = Utils.retrieve_query_results("SELECT DISTINCT USERNAME,ONLINE FROM CHATURBATE")
+        results = Utils.retrieve_query_results("SELECT DISTINCT USERNAME FROM CHATURBATE")
         for row in results:
-            online_dict[row[0]] = row[1]
-            # username row0
-            # online row1
-
-        # create username_list
-        for username in online_dict.keys():
-            username_list.append(username)
+            username_list.append(row[0])
 
         # obtain chatid
         for username in username_list:
-            chatid_list = []
-            results = Utils.retrieve_query_results(f"SELECT CHAT_ID FROM CHATURBATE WHERE USERNAME='{username}'")
-            for row in results:
-                chatid_list.append(row[0])
-            chatid_dict[username] = chatid_list  # assign chatid list to every model
+            results = Utils.retrieve_query_results(f"SELECT DISTINCT CHAT_ID, ONLINE FROM CHATURBATE WHERE USERNAME='{username}'")
+            chat_and_online_dict[username]=results # assign (chatid,online) to every model
+
 
         # Threaded function for queue processing.
         def crawl(q, model_instances_dict):
@@ -625,55 +616,48 @@ def check_online_status() -> None:
             try:
 
                 if model_instance.status != "error":
+                    for tuple in chat_and_online_dict[username]:
+                        chat_id=tuple[0]
+                        db_status=tuple[1]
 
+                        if model_instance.online and db_status == "F":
 
-                    if model_instance.online and online_dict[username] == "F":
+                            if model_instance.status in {"away", "private", "hidden", "password"}:  # assuming the user knows the password
+                                Utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                                send_message(chat_id, f"{username} is now <b>online</b>!\n<i>No link preview can be provided</i>", bot, html=True,
+                                                     markup=markup_without_link_preview)
+                            else:
+                                Utils.exec_query(
+                                    f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
 
-                        if model_instance.status in {"away", "private", "hidden", "password"}:  # assuming the user knows the password
-                            Utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
-                            for y in chatid_dict[username]:
-                                    send_message(y, f"{username} is now <b>online</b>!\n<i>No link preview can be provided</i>", bot, html=True,
-                                                 markup=markup_without_link_preview)
-                        else:
-                            Utils.exec_query(
-                                f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
-
-                            for y in chatid_dict[username]:
-                                if Preferences.get_user_link_preview_preference(y) and model_instance.model_image != None:
-                                    send_image(y, model_instance.model_image, bot, markup=markup_with_link_preview,
-                                           caption=f"{username} is now <b>online</b>!", html=True)
+                                if Preferences.get_user_link_preview_preference(chat_id) and model_instance.model_image != None:
+                                        send_image(chat_id, model_instance.model_image, bot, markup=markup_with_link_preview,
+                                               caption=f"{username} is now <b>online</b>!", html=True)
                                 else:
-                                    send_message(y,f"{username} is now <b>online</b>!",bot,html=True,markup=markup_without_link_preview)
+                                        send_message(chat_id,f"{username} is now <b>online</b>!",bot,html=True,markup=markup_without_link_preview)
 
-                    elif model_instance.online==False and online_dict[username] == "T":
-                            Utils.exec_query(
-                                f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}'")
-
-                            for y in chatid_dict[username]:
-                                send_message(y, f"{username} is now <b>offline</b>", bot, html=True)
+                        elif model_instance.online==False and db_status == "T":
+                                Utils.exec_query(
+                                    f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                                send_message(chat_id, f"{username} is now <b>offline</b>", bot, html=True)
 
 
+                        if model_instance.status=="deleted":
+                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                            send_message(chat_id, f"{username} has been removed because room has been deleted", bot)
+                            logging.info(f"{username} has been removed from database because room has been deleted")
 
+                        elif model_instance.status=="banned":
+                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                            send_message(chat_id, f"{username} has been removed because room has been banned", bot)
+                            logging.info(f"{username} has been removed from database because has been banned")
 
-                    if model_instance.status=="deleted":
-                        Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
-                        for y in chatid_dict[username]:
-                            send_message(y, f"{username} has been removed because room has been deleted", bot)
-                        logging.info(f"{username} has been removed from database because room has been deleted")
-
-                    elif model_instance.status=="banned":
-                        Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
-                        for y in chatid_dict[username]:
-                            send_message(y, f"{username} has been removed because room has been banned", bot)
-                        logging.info(f"{username} has been removed from database because has been banned")
-
-                    elif model_instance.status=="geoblocked":
-                        Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}'")
-                        for y in chatid_dict[username]:
-                            send_message(y,
+                        elif model_instance.status=="geoblocked":
+                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                            send_message(chat_id,
                                          f"{username} has been removed because of geoblocking, I'm going to try to fix this soon",
                                          bot)  # Todo handle geoblocking
-                        logging.info(f"{username} has been removed from database because of geoblocking")
+                            logging.info(f"{username} has been removed from database because of geoblocking")
             except Exception as e:
                 Utils.handle_exception(e)
 
