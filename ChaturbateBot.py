@@ -554,9 +554,7 @@ def check_online_status() -> None:
         chat_and_online_dict={}
 
         # create a dictionary with usernames and online using distinct
-        results = Utils.retrieve_query_results("SELECT DISTINCT USERNAME FROM CHATURBATE")
-        for row in results:
-            username_list.append(row[0])
+        username_list = Utils.retrieve_query_results("SELECT DISTINCT USERNAME FROM CHATURBATE")
 
         # obtain chatid
         for username in username_list:
