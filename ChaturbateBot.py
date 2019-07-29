@@ -361,14 +361,30 @@ def view_stream_image_callback(update, CallbackContext):
     try:
         bot.edit_message_media(chat_id=chatid, message_id=messageid,
                                media=telegram.InputMediaPhoto(model_instance.model_image,caption=f"{username} is now <b>online</b>!",parse_mode=telegram.ParseMode.HTML), reply_markup=markup)
-    except Exception as e:
 
+
+    except Exceptions.ModelPrivate:
+        send_message(chatid, f"The model {username} is in private now, try again later", bot)
+        logging.warning(f'{chatid} could not view {username} image update because is private')
+    except Exceptions.ModelAway:
+        send_message(chatid, f"The model {username} is away, try again later", bot)
+        logging.warning(f'{chatid} could not view {username} image update because is away')
+    except Exceptions.ModelOffline:
+        send_message(chatid, f"The model {username} is offline", bot)
+        logging.warning(f'{chatid} could not view {username} image update because is offline')
+    except Exceptions.ModelPassword:
+        send_message(chatid, f"The model {username} cannot be seen because is password protected", bot)
+        logging.warning(f'{chatid} could not view {username} image update because is password protected')
+    except Exceptions.ModelNotViewable:
+        send_message(chatid, f"The model {username} probably does not exist", bot)
+        logging.warning(f'{chatid} could not view {username} image update')
+    except ConnectionError:
+        send_message(chatid, f"The model {username} cannot be seen because of connection issues, try again later", bot)
+        logging.warning(f'{chatid} could not view {username} image update because of connection issues')
+    except Exception as e:
         if hasattr(e, 'message'):
             if "Message is not modified" in e.message:
                 send_message(chatid, f"This is the latest update of {username}", bot)
-        else:
-            send_message(chatid, f"{username} cannot be updated, is probably offline", bot)
-            logging.info(f"{username} cannot be updated, is probably offline")
 
 
 # endregion
