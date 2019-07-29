@@ -649,12 +649,18 @@ def check_online_status() -> None:
                             send_message(chat_id, f"{username} has been removed because room has been banned", bot)
                             logging.info(f"{username} has been removed from {chat_id} because has been banned")
 
+                        elif model_instance.status=="canceled":
+                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                            send_message(chat_id, f"{username} has been removed because room has been canceled", bot)
+                            logging.info(f"{username} has been removed from {chat_id} because has been canceled")
+
                         elif model_instance.status=="geoblocked":
                             Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
                             send_message(chat_id,
                                          f"{username} has been removed because of geoblocking",
                                          bot)  # Todo handle geoblocking
                             logging.info(f"{username} has been removed from {chat_id} because of geoblocking")
+
             except Exception as e:
                 Utils.handle_exception(e)
 
