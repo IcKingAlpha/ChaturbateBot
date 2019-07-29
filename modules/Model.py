@@ -88,17 +88,20 @@ class Model:
             self.status = "error"
             self.online = False
         elif b"It's probably just a broken link, or perhaps a cancelled broadcaster." in self._response.content:  # check if models still exists
-            self.status = "error"
+            self.status = "canceled"
             self.online = False
             return
         elif self._response.status_code == 401:
             self._response = json.loads(self._response.content)
             if "Room is deleted" in str(self._response['detail']):
                 self.status = "deleted"
+                self.online = False
             elif "This room has been banned" in str(self._response['detail']):
                 self.status = "banned"
+                self.online = False
             elif "This room is not available to your region or gender." in str(self._response['detail']):
                 self.status = "geoblocked"
+                self.online = False
             elif "This room requires a password" in str(self._response['detail']):
                 self.status = "password"
                 self.online = True
@@ -145,5 +148,13 @@ class Model:
             raise Exceptions.ModelPrivate
         elif self.status == "password":
             raise Exceptions.ModelPassword
+        elif self.status == "deleted":
+            raise Exceptions.ModelDeleted
+        elif self.status == "banned":
+            raise Exceptions.ModelBanned
+        elif self.status == "geoblocked":
+            raise Exceptions.ModelGeoblocked
+        elif self.status == "canceled":
+            raise Exceptions.ModelCanceled
         else:
             raise Exceptions.ModelNotViewable

@@ -16,3 +16,19 @@ class ModelPrivate(Exception):
 
 class ModelPassword(Exception):
     pass
+
+
+class ModelDeleted(Exception):
+    pass
+
+
+class ModelBanned(Exception):
+    pass
+
+
+class ModelGeoblocked(Exception):
+    pass
+
+
+class ModelCanceled(Exception):
+    pass
