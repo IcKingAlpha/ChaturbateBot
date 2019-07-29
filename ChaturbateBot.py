@@ -372,6 +372,18 @@ def view_stream_image_callback(update, CallbackContext):
     except Exceptions.ModelPassword:
         send_message(chatid, f"The model {username} cannot be seen because is password protected", bot)
         logging.warning(f'{chatid} could not view {username} image update because is password protected')
+    except Exceptions.ModelDeleted:
+        send_message(chatid, f"The model {username} cannot be seen because is deleted", bot)
+        logging.warning(f'{chatid} could not view {username} image update because is deleted')
+    except Exceptions.ModelBanned:
+        send_message(chatid, f"The model {username} cannot be seen because is banned", bot)
+        logging.warning(f'{chatid} could not view {username} image update because is banned')
+    except Exceptions.ModelGeoblocked:
+        send_message(chatid, f"The model {username} cannot be seen because is geoblocked", bot)
+        logging.warning(f'{chatid} could not view {username} image update because is geoblocked')
+    except Exceptions.ModelCanceled:
+        send_message(chatid, f"The model {username} cannot be seen because is canceled", bot)
+        logging.warning(f'{chatid} could not view {username} image update because is canceled')
     except Exceptions.ModelNotViewable:
         send_message(chatid, f"The model {username} probably does not exist", bot)
         logging.warning(f'{chatid} could not view {username} image update')
