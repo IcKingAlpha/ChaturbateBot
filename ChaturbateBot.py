@@ -99,8 +99,6 @@ def send_image(chatid: str, image, bot: updater.bot, html: bool = False, markup=
     notification = not Preferences.get_user_notifications_sound_preference(
         chatid)  # the setting is opposite of preference
 
-    image.seek(0) # see https://bit.ly/2YtCQ7e
-
     try:
         bot.send_chat_action(chatid, action="upload_photo")
         if html and markup != None and caption != None:

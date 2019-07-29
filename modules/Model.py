@@ -51,7 +51,7 @@ class Model:
     def model_image(self):
         if self.autoupdate:
             self.update_model_image()
-
+        self.__model_image.seek(0)  # see https://bit.ly/2YtCQ7e
         return self.__model_image
 
     @model_image.setter
