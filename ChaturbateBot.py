@@ -569,7 +569,7 @@ def check_online_status() -> None:
                 username = Utils.sanitize_username(work[1])
                 model_instance=Model(username,autoupdate=False)
                 model_instance.update_model_status()
-                #Todo: handle update model image exceptions
+                #Todo: handle update model image exceptions better
                 if model_instance.online and model_instance.status != "password":
                     try:
                         model_instance.update_model_image()
@@ -637,7 +637,7 @@ def check_online_status() -> None:
                                 else:
                                     send_message(y,f"{username} is now <b>online</b>!",bot,html=True,markup=markup_without_link_preview)
 
-                    elif online_dict[username] == "T":
+                    elif model_instance.online==False and online_dict[username] == "T":
                             Utils.exec_query(
                                 f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}'")
 
