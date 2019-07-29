@@ -1,7 +1,7 @@
 import datetime
+import io
 import json
 import time
-from io import BytesIO
 
 import requests
 from PIL import Image
@@ -110,7 +110,7 @@ class Model:
             self._response = json.loads(self._response.content)
             self.status = self._response["room_status"]
 
-        if self.status == "error" or self.status == ("offline" or "away" or "private" or "hidden"):
+        if self.status in {"offline", "away", "private", "hidden", "error"}:
             self.online = False
         else:
             self.online = True
@@ -120,14 +120,9 @@ class Model:
             attempt_count = 0
             for attempt in range(5):
                 try:
-                    model_image = Image.open(
-                        BytesIO(
-                            requests.get(f'https://roomimg.stream.highwebmedia.com/ri/{self.username}.jpg').content))
-                    bio = BytesIO()
-                    bio.name = 'image.jpeg'
-                    model_image.save(bio, 'JPEG')
-                    bio.seek(0)
-                    self.model_image = bio
+                    data = requests.get(f'https://roomimg.stream.highwebmedia.com/ri/{self.username}.jpg').content
+                    bio_data = io.BytesIO(data)
+                    self.model_image = bio_data
                 except Exception as e:
                     Utils.handle_exception(e)
                     attempt_count += 1

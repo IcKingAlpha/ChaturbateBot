@@ -99,6 +99,8 @@ def send_image(chatid: str, image, bot: updater.bot, html: bool = False, markup=
     notification = not Preferences.get_user_notifications_sound_preference(
         chatid)  # the setting is opposite of preference
 
+    image.seek(0) # see https://bit.ly/2YtCQ7e
+
     try:
         bot.send_chat_action(chatid, action="upload_photo")
         if html and markup != None and caption != None:
@@ -362,7 +364,7 @@ def view_stream_image_callback(update, CallbackContext):
         bot.edit_message_media(chat_id=chatid, message_id=messageid,
                                media=telegram.InputMediaPhoto(model_instance.model_image,caption=f"{username} is now <b>online</b>!",parse_mode=telegram.ParseMode.HTML), reply_markup=markup)
     except Exception as e:
-        
+
         if hasattr(e, 'message'):
             if "Message is not modified" in e.message:
                 send_message(chatid, f"This is the latest update of {username}", bot)
@@ -615,17 +617,9 @@ def check_online_status() -> None:
             try:
 
                 if model_instance.status != "error":
-                    if not model_instance.online:
-
-                        if online_dict[username] == "T":
-                            Utils.exec_query(
-                                f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}'")
-
-                            for y in chatid_dict[username]:
-                                send_message(y, f"{username} is now <b>offline</b>", bot, html=True)
 
 
-                    elif online_dict[username] == "F":
+                    if model_instance.online and online_dict[username] == "F":
 
                         if model_instance.status == "password":  # assuming the user knows the password
                             Utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}'")
@@ -642,6 +636,13 @@ def check_online_status() -> None:
                                            caption=f"{username} is now <b>online</b>!", html=True)
                                 else:
                                     send_message(y,f"{username} is now <b>online</b>!",bot,html=True,markup=markup_without_link_preview)
+
+                    elif online_dict[username] == "T":
+                            Utils.exec_query(
+                                f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}'")
+
+                            for y in chatid_dict[username]:
+                                send_message(y, f"{username} is now <b>offline</b>", bot, html=True)
 
 
 
