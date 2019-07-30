@@ -1,13 +1,13 @@
 import datetime
 import io
 import json
+import logging
 import time
 
 import requests
-from PIL import Image
+
 from modules import Exceptions
 from modules import Utils
-import logging
 
 
 class Model:
