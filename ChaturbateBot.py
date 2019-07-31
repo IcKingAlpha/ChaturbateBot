@@ -136,7 +136,7 @@ def send_image(chatid: str, image, bot: updater.bot, html: bool = False, markup=
 
 def start(update, CallbackContext) -> None:
     global bot
-    chatid = update.message.chat.id
+    chatid = update.message.chat_id
     send_message(chatid,
                  "/add username to add an username to check \n/remove username to remove an username\n(you can use /remove <b>all</b> to remove all models at once) \n/list to see which users you are currently following",
                  bot, html=True
@@ -212,7 +212,7 @@ def add(update, CallbackContext) -> None:
 def remove(update, CallbackContext) -> None:
     global bot
     args = CallbackContext.args
-    chatid = update.message.chat.id
+    chatid = update.message.chat_id
     username_message_list = []
     usernames_in_database = []
 
@@ -257,7 +257,7 @@ def remove(update, CallbackContext) -> None:
 
 def list_command(update, CallbackContext) -> None:
     global bot
-    chatid = update.message.chat.id
+    chatid = update.message.chat_id
     username_list = []
     online_list = []
     username_dict = {}
@@ -290,7 +290,7 @@ def list_command(update, CallbackContext) -> None:
 def stream_image(update, CallbackContext) -> None:
     global bot
     args = CallbackContext.args
-    chatid = update.message.chat.id
+    chatid = update.message.chat_id
 
     if len(args) < 1:
         send_message(chatid,
@@ -519,7 +519,7 @@ def authorize_admin(update, CallbackContext) -> None:
 def send_message_to_everyone(update, CallbackContext) -> None:
     global bot
     args = CallbackContext.args
-    chatid = update.message.chat.id
+    chatid = update.message.chat_id
 
     if Utils.admin_check(chatid) == False:
         send_message(chatid, "You're not authorized to do this", bot)
