@@ -13,6 +13,11 @@ from modules import Utils
 class Model:
 
     def __init__(self, username, autoupdate=True):
+        """
+
+        :param username: The username to create a model instance of
+        :param autoupdate: Automatically update model variables when accessed if older than 10 seconds since last update
+        """
         self._response = None
         self.__model_image = None
         self.__online = None
@@ -63,6 +68,9 @@ class Model:
         self.__model_image = value
 
     def update_model_status(self):
+        """
+        Updates self.online and self.status
+        """
         for attempt in range(5):
             # noinspection PyBroadException
             try:
@@ -123,6 +131,20 @@ class Model:
             self.online = True
 
     def update_model_image(self):
+        """
+        Updates self.image
+
+
+        :raise ModelOffline if self.status is 'offline'
+        :raise ModelAway if self.status is 'away'
+        :raise ModelPrivate if self.status is 'private' or 'hidden'
+        :raise ModelPassword if self.status is 'password'
+        :raise ModelDeleted if self.status is 'deleted'
+        :raise ModelBanned if self.status is 'banned'
+        :raise ModelGeoblocked if self.status is 'geoblocked'
+        :raise ModelCanceled if self.status is 'canceled'
+        :raise ModelNotViewable if any other error happens
+        """
         if self.online and self.status not in {"away", "private", "hidden", "password"}:
             attempt_count = 0
             for attempt in range(5):
