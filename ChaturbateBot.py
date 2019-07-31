@@ -254,7 +254,7 @@ def remove(update, CallbackContext) -> None:
                 send_message(chatid, f"You aren't following {username}", bot)
 
 
-# Todo: test for null results list and improve the code
+
 def list_command(update, CallbackContext) -> None:
     global bot
     chatid = update.message.chat.id
@@ -661,7 +661,7 @@ def check_online_status() -> None:
                             Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
                             send_message(chat_id,
                                          f"{username} has been removed because of geoblocking",
-                                         bot)  # Todo handle geoblocking
+                                         bot)
                             logging.info(f"{username} has been removed from {chat_id} because of geoblocking")
 
             except Exception as e:
