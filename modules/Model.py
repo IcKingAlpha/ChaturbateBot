@@ -86,38 +86,38 @@ class Model:
         if self._response is None:
             logging.info(self.username + " has failed to connect after all attempts")
             self.status = "error"
-            self.online = False
+
         elif b"It's probably just a broken link, or perhaps a cancelled broadcaster." in self._response.content:  # check if models still exists
             self.status = "canceled"
-            self.online = False
-            return
+
         elif self._response.status_code == 401:
             self._response = json.loads(self._response.content)
             if "Room is deleted" in str(self._response['detail']):
                 self.status = "deleted"
-                self.online = False
             elif "This room has been banned" in str(self._response['detail']):
                 self.status = "banned"
-                self.online = False
             elif "This room is not available to your region or gender." in str(self._response['detail']):
                 self.status = "geoblocked"
-                self.online = False
             elif "This room requires a password" in str(self._response['detail']):
                 self.status = "password"
-                self.online = True
             else:
-                self.online = False
-            return
+                self.status = "error"
+
         elif self._response.status_code == (200 and 401):
             logging.error(f'{self.username} got a {self._response.status_code} error')
             self.status = "error"
-            self.online = False
-            return
-        else:
-            self._response = json.loads(self._response.content)
-            self.status = self._response["room_status"]
 
-        if self.status in {"offline", "error"}:
+        else:
+            try:
+                self._response = json.loads(self._response.content)
+            except Exception as e:
+                Utils.handle_exception(e)
+                logging.critical("This response should have been json decodable")
+                self.status = "error"
+            else:
+                self.status = self._response["room_status"]
+
+        if self.status in {"offline", "error", "deleted", "banned", "geoblocked", "canceled"}:
             self.online = False
         else:
             self.online = True
