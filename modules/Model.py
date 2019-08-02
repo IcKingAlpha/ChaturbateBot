@@ -79,15 +79,13 @@ class Model:
                 headers = {
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
                 self._response = requests.get(target, headers=headers)
-            except (json.JSONDecodeError, ConnectionError) as e:
-                Utils.handle_exception(e)
+
+                if "Cloudflare is currently unable to resolve your requested domain" in str(self._response.content):
+                    self._response = None
+                    raise ConnectionError
+            except Exception:
                 logging.info(self.username + " has failed to connect on attempt " + str(attempt))
                 time.sleep(1)  # sleep and retry
-            except Exception as e:
-                Utils.handle_exception(e)
-                logging.info(self.username + " has incurred in an unknown exception")
-                self.status = "error"
-                self.online = False
             else:
                 break
 
