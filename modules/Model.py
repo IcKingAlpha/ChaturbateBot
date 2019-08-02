@@ -83,9 +83,12 @@ class Model:
                 if "Cloudflare is currently unable to resolve your requested domain" in str(self._response.content):
                     self._response = None
                     raise ConnectionError
+                elif "The web server reported a bad gateway error." in str(self._response.content):
+                    self._response = None
+                    raise ConnectionError
             except Exception:
                 logging.info(self.username + " has failed to connect on attempt " + str(attempt))
-                time.sleep(1)  # sleep and retry
+                time.sleep(3)  # sleep and retry
             else:
                 break
 
