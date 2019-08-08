@@ -86,6 +86,12 @@ class Model:
                 elif "The web server reported a bad gateway error." in str(self._response.content):
                     self._response = None
                     raise ConnectionError
+                elif "Cloudflare is unable to establish an SSL connection" in str(self._response.content):
+                    self._response = None
+                    raise ConnectionError
+                elif "The web server is not returning a connection" in str(self._response.content):
+                    self._response = None
+                    raise ConnectionError
             except Exception:
                 logging.info(self.username + " has failed to connect on attempt " + str(attempt))
                 time.sleep(3)  # sleep and retry
