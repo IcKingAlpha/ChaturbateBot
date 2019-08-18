@@ -305,6 +305,19 @@ def stream_image(update, CallbackContext) -> None:
 
     username = Utils.sanitize_username(args[0])
     model_instance = Model(username)
+
+    if not Utils.admin_check(chatid):
+        if Utils.is_chatid_temp_banned(chatid):
+            return
+        if Utils.get_last_spam_date(chatid) == None:
+            Utils.set_last_spam_date(chatid, datetime.datetime.now())
+        elif (datetime.datetime.now() - Utils.get_last_spam_date(chatid)).total_seconds() <= 3:
+            Utils.temp_ban_chatid(chatid, 10)
+            send_message(chatid,"You have been temporarily banned for spamming, try again later")
+            logging.warning(f"Soft banned {chatid} for 10 seconds for spamming image updates")
+        else:
+            Utils.set_last_spam_date(chatid, datetime.datetime.now())
+
     try:
         send_image(chatid, model_instance.model_image, bot)
         logging.info(f'{chatid} viewed {username} stream image')
@@ -340,6 +353,8 @@ def view_stream_image_callback(update, CallbackContext):
     username = CallbackContext.match.string.replace("view_stream_image_callback_", "")
     chatid = update.callback_query.message.chat_id
     messageid = update.callback_query.message.message_id
+    if Utils.is_chatid_temp_banned(chatid):
+        return
     model_instance = Model(username)
 
     keyboard = [[InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}'),
@@ -383,6 +398,15 @@ def view_stream_image_callback(update, CallbackContext):
         if hasattr(e, 'message'):
             if "Message is not modified" in e.message:
                 send_message(chatid, f"This is the latest update of {username}", bot)
+                if not Utils.admin_check(chatid):
+                    if Utils.get_last_spam_date(chatid)==None:
+                        Utils.set_last_spam_date(chatid, datetime.datetime.now())
+                    elif (datetime.datetime.now()-Utils.get_last_spam_date(chatid)).total_seconds() <= 3:
+                        Utils.temp_ban_chatid(chatid, 25)
+                        send_message(chatid, "You have been temporarily banned for spamming, try again later")
+                        logging.warning(f"Soft banned {chatid} for 25 seconds for spamming image updates")
+                    else:
+                        Utils.set_last_spam_date(chatid, datetime.datetime.now())
 
 
 # endregion

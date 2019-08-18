@@ -1,12 +1,12 @@
-import json
 import logging
 import sqlite3
-
-import requests
+import datetime
 
 from modules.Argparse_chaturbatebot import args
 
 bot_path = args["working_folder"]
+last_spam_dict = {}
+temp_ban_chatid_dict = {}
 
 
 def handle_exception(e: Exception) -> None:
@@ -116,3 +116,33 @@ def admin_check(chatid: str) -> bool:
         return False
     else:
         return True
+
+
+def set_last_spam_date(chatid: str, date: datetime.datetime):
+    last_spam_dict[chatid] = date
+
+
+def get_last_spam_date(chatid: str) -> (datetime.datetime, None):
+    try:
+        return last_spam_dict[chatid]
+    except KeyError:
+        return None
+
+
+def temp_ban_chatid(chatid: str, ban_time: float):
+    temp_ban_chatid_dict[chatid] = datetime.datetime.now() + datetime.timedelta(0, ban_time)
+
+
+def remove_temp_chatid_ban(chatid: str):
+    del temp_ban_chatid_dict[chatid]
+
+
+def is_chatid_temp_banned(chatid: str) -> bool:
+    if chatid in list(temp_ban_chatid_dict.keys()):
+        if (datetime.datetime.now() - temp_ban_chatid_dict[chatid]).total_seconds() >= 0:
+            remove_temp_chatid_ban(chatid)
+            return False
+        else:
+            return True
+    else:
+        return False
