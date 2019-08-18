@@ -308,24 +308,28 @@ def stream_image(update, CallbackContext) -> None:
     try:
         send_image(chatid, model_instance.model_image, bot)
         logging.info(f'{chatid} viewed {username} stream image')
+
     except Exceptions.ModelPrivate:
         send_message(chatid, f"The model {username} is in private now, try again later", bot)
         logging.warning(f'{chatid} could not view {username} stream image because is private')
+
     except Exceptions.ModelAway:
         send_message(chatid, f"The model {username} is away, try again later", bot)
         logging.warning(f'{chatid} could not view {username} stream image because is away')
-    except Exceptions.ModelOffline:
-        send_message(chatid, f"The model {username} is offline", bot)
-        logging.warning(f'{chatid} could not view {username} stream image because is offline')
+
     except Exceptions.ModelPassword:
         send_message(chatid, f"The model {username} cannot be seen because is password protected", bot)
         logging.warning(f'{chatid} could not view {username} stream image because is password protected')
-    except (Exceptions.ModelDeleted, Exceptions.ModelBanned, Exceptions.ModelGeoblocked, Exceptions.ModelCanceled):
+
+    except (Exceptions.ModelDeleted, Exceptions.ModelBanned, Exceptions.ModelGeoblocked, Exceptions.ModelCanceled,
+            Exceptions.ModelOffline):
         send_message(chatid, f"The model {username} cannot be seen because is {model_instance.status}", bot)
         logging.warning(f'{chatid} could not view {username} image update because is {model_instance.status}')
+
     except Exceptions.ModelNotViewable:
         send_message(chatid, f"The model {username} is not visible", bot)
         logging.warning(f'{chatid} could not view {username} stream image')
+
     except ConnectionError:
         send_message(chatid, f"The model {username} cannot be seen because of connection issues, try again later", bot)
         logging.warning(f'{chatid} could not view {username} stream image because of connection issues')
@@ -350,24 +354,31 @@ def view_stream_image_callback(update, CallbackContext):
     except Exceptions.ModelPrivate:
         send_message(chatid, f"The model {username} is in private now, try again later", bot)
         logging.warning(f'{chatid} could not view {username} image update because is private')
+
     except Exceptions.ModelAway:
         send_message(chatid, f"The model {username} is away, try again later", bot)
         logging.warning(f'{chatid} could not view {username} image update because is away')
-    except Exceptions.ModelOffline:
-        send_message(chatid, f"The model {username} is offline", bot)
-        logging.warning(f'{chatid} could not view {username} image update because is offline')
+
     except Exceptions.ModelPassword:
         send_message(chatid, f"The model {username} cannot be seen because is password protected", bot)
         logging.warning(f'{chatid} could not view {username} image update because is password protected')
-    except (Exceptions.ModelDeleted, Exceptions.ModelBanned, Exceptions.ModelGeoblocked, Exceptions.ModelCanceled):
+
+    except (Exceptions.ModelDeleted, Exceptions.ModelBanned, Exceptions.ModelGeoblocked, Exceptions.ModelCanceled,
+            Exceptions.ModelOffline):
+        keyboard = [[InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}')]]
+        markup = InlineKeyboardMarkup(keyboard)
+        bot.edit_message_reply_markup(chat_id=chatid, message_id=messageid, reply_markup=markup) #remove update image button
         send_message(chatid, f"The model {username} cannot be seen because is {model_instance.status}", bot)
         logging.warning(f'{chatid} could not view {username} image update because is {model_instance.status}')
+
     except Exceptions.ModelNotViewable:
         send_message(chatid, f"The model {username} is not visible", bot)
         logging.warning(f'{chatid} could not view {username} image update')
+
     except ConnectionError:
         send_message(chatid, f"The model {username} cannot be seen because of connection issues, try again later", bot)
         logging.warning(f'{chatid} could not view {username} image update because of connection issues')
+
     except Exception as e:
         if hasattr(e, 'message'):
             if "Message is not modified" in e.message:
