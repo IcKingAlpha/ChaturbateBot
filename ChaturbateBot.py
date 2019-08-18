@@ -138,9 +138,12 @@ def start(update, CallbackContext) -> None:
     global bot
     chatid = update.message.chat_id
     send_message(chatid,
-                 "/add username to add an username to check \n/remove username to remove an username\n(you can use /remove <b>all</b> to remove all models at once) \n/list to see which users you are currently following",
-                 bot, html=True
-                 )
+                 """/add - Add a model
+/remove - Remove a model
+/list - List the models you are following
+/stream_image - See a screenshot of a model's live
+/settings - Edit your settings""",
+                 bot, html=True)
 
 
 def add(update, CallbackContext) -> None:
