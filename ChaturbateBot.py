@@ -189,9 +189,11 @@ def add(update, CallbackContext) -> None:
         model_instance=Model(username)
         if model_instance.status not in ('deleted', 'banned', 'geoblocked', 'canceled', 'error'):
             if username not in usernames_in_database:
-                    Utils.exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
-                    send_message(chatid, f"{username} has been added", bot)
-                    logging.info(f'{chatid} added {username}')
+                Utils.exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
+                send_message(chatid, f"{username} has been added", bot)
+                logging.info(f'{chatid} added {username}')
+            else:
+                send_message(chatid,f"{username} has already been added",bot)
         elif model_instance.status=='deleted':
             send_message(chatid, f"{username} has not been added because is deleted", bot)
             logging.info(f"{chatid} could not add {username} because is deleted")
@@ -199,8 +201,8 @@ def add(update, CallbackContext) -> None:
             send_message(chatid, f"{username} has not been added because is banned", bot)
             logging.info(f"{chatid} could not add {username} because is banned")
         elif model_instance.status=='geoblocked':
-            send_message(chatid, f"{username} has not been added because is geoblocked+", bot)
-            logging.info(f"{chatid} could not add {username} because is geoblocked+")
+            send_message(chatid, f"{username} has not been added because is geoblocked", bot)
+            logging.info(f"{chatid} could not add {username} because is geoblocked")
         elif model_instance.status=='canceled':
             send_message(chatid, f"{username} was not added because it doesn't exist", bot)
             logging.info(f'{chatid} tried to add {username}, which does not exist')
