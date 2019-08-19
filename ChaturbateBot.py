@@ -1,25 +1,21 @@
 # -*- coding: utf-8 -*-
 
 import datetime
-import json
 import logging
 import threading
 import time
-from io import BytesIO
 from queue import Queue
 
-import requests
 import telegram
-from PIL import Image
-from telegram.error import Unauthorized
-from telegram.ext import CommandHandler, Updater, CallbackContext, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import Unauthorized
+from telegram.ext import CommandHandler, Updater, CallbackQueryHandler
 
 from modules import Exceptions
 from modules import Preferences
 from modules import Utils
-from modules.Model import Model
 from modules.Argparse_chaturbatebot import args as argparse_args
+from modules.Model import Model
 
 updater = Updater(token=argparse_args["key"], use_context=True)
 dispatcher = updater.dispatcher
