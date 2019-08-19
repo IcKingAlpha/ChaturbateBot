@@ -633,9 +633,9 @@ def check_online_status() -> None:
         model_instances_dict = {}
 
         # load up the queue with the username_list to fetch and the index for each job (as a tuple):
-        for i in range(len(username_list)):
-            # need the index and the url in each queue item.
-            q.put((i, username_list[i]))
+        for index, value in enumerate(username_list):
+            # need the index and the username in each queue item.
+            q.put((index, value))
 
             # Starting worker threads on queue processing
         for i in range(http_threads):
