@@ -263,23 +263,19 @@ def remove(update, CallbackContext) -> None:
 def list_command(update, CallbackContext) -> None:
     global bot
     chatid = update.message.chat_id
-    username_list = []
-    online_list = []
     username_dict = {}
     followed_users = ""
 
-    results = Utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+    results = Utils.retrieve_query_results(f"SELECT USERNAME, ONLINE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
     if results != []:  # an exception didn't happen
         for row in results:
-            username_list.append(row[0])
-            online_list.append(row[2])
-        for x in range(0, len(username_list)):
-            # dictionary with usernames and online_status
-            username_dict.update({username_list[x]: online_list[x]})
+            username=row[0]
+            status=row[1]
+            username_dict[username]=status
 
-        for username in sorted(username_dict):
-            followed_users += username + ": "
-            if username_dict[username] == "T":
+        for username, status in sorted(username_dict.items()):
+            followed_users += f"{username}: "
+            if status == "T":
                 followed_users += "<b>online</b>\n"
             else:
                 followed_users += "offline\n"
@@ -288,7 +284,7 @@ def list_command(update, CallbackContext) -> None:
         send_message(chatid, "You aren't following any user", bot)
     else:
         send_message(
-            chatid, f"You are currently following these {len(username_list)} users:\n" +
+            chatid, f"You are currently following these {len(username_dict)} users:\n" +
                     followed_users, bot, html=True)
 
 
@@ -568,7 +564,6 @@ def send_message_to_everyone(update, CallbackContext) -> None:
 
 def active_users(update, CallbackContext) -> None:
     global bot
-    args = CallbackContext.args
     chatid = update.message.chat_id
     if Utils.admin_check(chatid) == False:
         send_message(chatid, "You're not authorized to do this", bot)
@@ -579,7 +574,6 @@ def active_users(update, CallbackContext) -> None:
 
 def active_models(update, CallbackContext) -> None:
     global bot
-    args = CallbackContext.args
     chatid = update.message.chat_id
     if Utils.admin_check(chatid) == False:
         send_message(chatid, "You're not authorized to do this", bot)
@@ -620,7 +614,7 @@ def check_online_status() -> None:
                 model_instance.update_model_status()
                 try:
                     model_instance.update_model_image()
-                except Exception as e:
+                except Exception:
                     model_instance.model_image = None  # set to None just to be secure Todo: this may be extra
 
                 model_instances_dict[username] = model_instance
