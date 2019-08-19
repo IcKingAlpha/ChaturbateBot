@@ -313,7 +313,7 @@ def stream_image(update, CallbackContext) -> None:
             Utils.set_last_spam_date(chatid, datetime.datetime.now())
         elif (datetime.datetime.now() - Utils.get_last_spam_date(chatid)).total_seconds() <= 3:
             Utils.temp_ban_chatid(chatid, 10)
-            send_message(chatid,"You have been temporarily banned for spamming, try again later")
+            send_message(chatid,"You have been temporarily banned for spamming, try again later", bot)
             logging.warning(f"Soft banned {chatid} for 10 seconds for spamming image updates")
         else:
             Utils.set_last_spam_date(chatid, datetime.datetime.now())
@@ -403,7 +403,7 @@ def view_stream_image_callback(update, CallbackContext):
                         Utils.set_last_spam_date(chatid, datetime.datetime.now())
                     elif (datetime.datetime.now()-Utils.get_last_spam_date(chatid)).total_seconds() <= 3:
                         Utils.temp_ban_chatid(chatid, 25)
-                        send_message(chatid, "You have been temporarily banned for spamming, try again later")
+                        send_message(chatid, "You have been temporarily banned for spamming, try again later", bot)
                         logging.warning(f"Soft banned {chatid} for 25 seconds for spamming image updates")
                     else:
                         Utils.set_last_spam_date(chatid, datetime.datetime.now())
