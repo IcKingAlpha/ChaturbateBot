@@ -341,7 +341,6 @@ def stream_image(update, CallbackContext) -> None:
 
 
 def view_stream_image_callback(update, CallbackContext):
-    query = update.callback_query
     username = CallbackContext.match.string.replace("view_stream_image_callback_", "")
     chatid = update.callback_query.message.chat_id
     messageid = update.callback_query.message.message_id
