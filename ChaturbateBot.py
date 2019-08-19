@@ -558,13 +558,35 @@ def send_message_to_everyone(update, CallbackContext) -> None:
         chatid_list.append(row[0])
 
     for word in args:
-        message += word + " "
+        message += f"{word} "
     message = message[:-1]
 
     for x in chatid_list:
         send_message(x, message, bot)
     logging.info(
         f"{chatid} finished sending a message to everyone, took {(datetime.datetime.now() - start_time).total_seconds()} seconds")
+
+def active_users(update, CallbackContext) -> None:
+    global bot
+    args = CallbackContext.args
+    chatid = update.message.chat_id
+    if Utils.admin_check(chatid) == False:
+        send_message(chatid, "You're not authorized to do this", bot)
+        return
+
+    users_count = Utils.retrieve_query_results("SELECT COUNT(CHAT_ID) FROM PREFERENCES")[0][0]
+    send_message(chatid,f"The active users are {users_count}",bot)
+
+def active_models(update, CallbackContext) -> None:
+    global bot
+    args = CallbackContext.args
+    chatid = update.message.chat_id
+    if Utils.admin_check(chatid) == False:
+        send_message(chatid, "You're not authorized to do this", bot)
+        return
+
+    models_count = Utils.retrieve_query_results("SELECT COUNT(DISTINCT USERNAME) FROM CHATURBATE")[0][0]
+    send_message(chatid,f"The active models are {models_count}",bot)
 
 
 # endregion
@@ -728,6 +750,12 @@ dispatcher.add_handler(CallbackQueryHandler(view_stream_image_callback, pattern=
 dispatcher.add_handler(CommandHandler('authorize_admin', authorize_admin))
 
 dispatcher.add_handler(CommandHandler('send_message_to_everyone', send_message_to_everyone))
+
+dispatcher.add_handler(CommandHandler('active_users', active_users))
+
+dispatcher.add_handler(CommandHandler('active_models', active_models))
+
+
 
 logging.info('Checking database existence...')
 
