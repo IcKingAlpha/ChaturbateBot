@@ -660,9 +660,9 @@ def check_online_status() -> None:
             try:
 
                 if model_instance.status != "error":
-                    for tuple in chat_and_online_dict[username]:
-                        chat_id=tuple[0]
-                        db_status=tuple[1]
+                    for chatid_tuple in chat_and_online_dict[username]:
+                        chat_id=chatid_tuple[0]
+                        db_status=chatid_tuple[1]
 
                         if model_instance.online and db_status == "F":
 
