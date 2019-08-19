@@ -95,6 +95,10 @@ class Model:
                 elif "The origin web server timed out responding to this request" in str(self._response.content):
                     self._response = None
                     raise ConnectionError
+                elif " Web server is returning an unknown error" in str(self._response.content):
+                    self._response = None
+                    raise ConnectionError
+                
             except Exception:
                 logging.info(self.username + " has failed to connect on attempt " + str(attempt))
                 time.sleep(3)  # sleep and retry
