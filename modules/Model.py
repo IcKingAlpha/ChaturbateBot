@@ -80,26 +80,8 @@ class Model:
                     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36', }
                 self._response = requests.get(target, headers=headers)
 
-                if "Cloudflare is currently unable to resolve your requested domain" in str(self._response.content):
-                    self._response = None
-                    raise ConnectionError
-                elif "The web server reported a bad gateway error." in str(self._response.content):
-                    self._response = None
-                    raise ConnectionError
-                elif "Cloudflare is unable to establish an SSL connection" in str(self._response.content):
-                    self._response = None
-                    raise ConnectionError
-                elif "The web server is not returning a connection" in str(self._response.content):
-                    self._response = None
-                    raise ConnectionError
-                elif "The origin web server timed out responding to this request" in str(self._response.content):
-                    self._response = None
-                    raise ConnectionError
-                elif " Web server is returning an unknown error" in str(self._response.content):
-                    self._response = None
-                    raise ConnectionError
-
             except Exception:
+                self._response = None
                 logging.info(self.username + " has failed to connect on attempt " + str(attempt))
                 time.sleep(3)  # sleep and retry
             else:
