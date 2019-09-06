@@ -117,11 +117,6 @@ class Model:
             except Exception as e:
                 Utils.handle_exception(e)
                 logging.critical("This response should have been json decodable")
-                try:
-                    logging.critical(str(self._response.content))
-                except Exception as e:
-                    Utils.handle_exception(e)
-                    logging.critical("The response could not be printed")
                 self.status = "error"
             else:
                 self.status = self._response["room_status"]
