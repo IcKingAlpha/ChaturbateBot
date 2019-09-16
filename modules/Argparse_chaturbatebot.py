@@ -11,7 +11,7 @@ ap.add_argument(
     required=False,
     type=str,
     default=os.getcwd(),
-    help="Set the bot's working-folder. Default = ChaturbateBot.py's location")
+    help=f"Set the bot's working-folder. Default = {Path.cwd()}")
 ap.add_argument(
     "-t",
     "--time",
@@ -54,6 +54,6 @@ ap.add_argument(
     required=False,
     type=str,
     default=str(Path.cwd()/"program_log.log"),
-    help="Logging file location, Default=cwd()/program_log.log")
+    help=f"Logging file location, Default={Path.cwd()/'program_log.log'}")
 args = vars(ap.parse_args())
 
