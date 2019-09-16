@@ -45,6 +45,9 @@ def update_link_preview_preference(chatid: str, value: bool) -> None:
     :param chatid: The chatid of the user who will be tested
     :param value: The boolean value that will be converted to int and inserted in the table
     """
+    if not user_has_preferences(chatid):
+        add_user_to_preferences(chatid)
+        
     if value:
         value = 1
     else:
@@ -77,6 +80,9 @@ def update_notifications_sound_preference(chatid: str, value: bool) -> None:
     :param chatid: The chatid of the user who will be tested
     :param value: The boolean value that will be converted to int and inserted in the table
     """
+    if not user_has_preferences(chatid):
+        add_user_to_preferences(chatid)
+
     if value:
         value = 1
     else:
