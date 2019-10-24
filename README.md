@@ -5,7 +5,7 @@ Status
 
 Why is this repository deprecated?
 =============
-On the 10/11th of october something changed in the cloudflare configuration of chaturbate.com, which no longer allows me to continously query the APIs, so the bot will no longer work at the time of writing (A fix by querying the pages could be made but judging by how fast the requests get blocked and the ammount of work that would be needed is not something I have time to do now)
+On the 10/11th of october 2019 something changed in the cloudflare configuration of chaturbate.com, which no longer allows me to continously query the APIs, so the bot will no longer work at the time of writing (A fix by querying the pages could be made but judging by how fast the requests get blocked and the ammount of work that would be needed is not something I have time to do now)
 
 
 What is this?
