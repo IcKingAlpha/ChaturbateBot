@@ -540,7 +540,7 @@ def send_message_to_everyone(update, CallbackContext) -> None:
 
     logging.info(f"{chatid} started sending a message to everyone")
 
-    results = Utils.retrieve_query_results("SELECT DISTINCT CHAT_ID FROM CHATURBATE")
+    results = Utils.retrieve_query_results("SELECT DISTINCT CHAT_ID FROM PREFERENCES")
     for row in results:
         chatid_list.append(row[0])
 
