@@ -606,6 +606,7 @@ def check_online_status() -> None:
 
                 model_instances_dict[username] = model_instance
                 # signal to the queue that task has been processed
+                time.sleep(wait_time)  # avoid server spamming by time-limiting the start of requests
                 q.task_done()
             return True
 
@@ -622,7 +623,7 @@ def check_online_status() -> None:
         for i in range(http_threads):
             worker = threading.Thread(target=crawl, args=(q, model_instances_dict), daemon=True)
             worker.start()
-            time.sleep(wait_time)  # avoid server spamming by time-limiting the start of requests
+
 
         # now we wait until the queue has been processed
         q.join()
