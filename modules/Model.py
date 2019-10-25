@@ -114,8 +114,7 @@ class Model:
         else:
             try:
                 self._response = json.loads(self._response.content)
-            except Exception as e:
-                Utils.handle_exception(e)
+            except Exception:
                 logging.critical("This response should have been json decodable")
                 self.status = "error"
             else:
