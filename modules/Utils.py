@@ -1,6 +1,7 @@
 import logging
 import sqlite3
 import datetime
+from functools import wraps
 
 from modules.Argparse_chaturbatebot import args
 
@@ -116,6 +117,20 @@ def admin_check(chatid: str) -> bool:
         return False
     else:
         return True
+
+
+def admin_check_decorator(enabled=False):
+    def real_decorator(func):
+        @wraps(func)
+        def wrapper_check(update, CallbackContext, *args, **kwargs):
+            chat_id = update.effective_user.id
+            if not admin_check(chat_id) and enabled:
+                logging.info(f"Unauthorized access denied for {chat_id}")
+                return
+            return func(update, CallbackContext, *args, **kwargs)
+
+        return wrapper_check
+    return real_decorator
 
 
 def set_last_spam_date(chatid: str, date: datetime.datetime):

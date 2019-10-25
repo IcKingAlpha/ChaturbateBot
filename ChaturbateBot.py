@@ -28,6 +28,7 @@ user_limit = argparse_args["limit"]
 auto_remove = Utils.str2bool(argparse_args["remove"])
 admin_pw = argparse_args["admin_password"]
 logging_file = argparse_args["logging_file"]
+admin_mode = Utils.str2bool(argparse_args["admin_mode"])
 
 logging_level = logging.INFO
 if not Utils.str2bool(argparse_args["enable_logging"]):
@@ -141,7 +142,7 @@ def start(update, CallbackContext) -> None:
 /settings - Edit your settings""",
                  bot, html=True)
 
-
+@Utils.admin_check_decorator(admin_mode)
 def add(update, CallbackContext) -> None:
     global bot
     args = CallbackContext.args
@@ -209,7 +210,7 @@ def add(update, CallbackContext) -> None:
             send_message(chatid, f"{username} was not added because an error happened", bot)
             logging.info(f'{chatid} could not add {username} because an error happened')
 
-
+@Utils.admin_check_decorator(admin_mode)
 def remove(update, CallbackContext) -> None:
     global bot
     args = CallbackContext.args
@@ -255,7 +256,7 @@ def remove(update, CallbackContext) -> None:
                 send_message(chatid, f"You aren't following {username}", bot)
 
 
-
+@Utils.admin_check_decorator(admin_mode)
 def list_command(update, CallbackContext) -> None:
     global bot
     chatid = update.message.chat_id
@@ -283,7 +284,7 @@ def list_command(update, CallbackContext) -> None:
             chatid, f"You are currently following these {len(username_dict)} users:\n" +
                     followed_users, bot, html=True)
 
-
+@Utils.admin_check_decorator(admin_mode)
 def stream_image(update, CallbackContext) -> None:
     global bot
     args = CallbackContext.args
@@ -338,7 +339,6 @@ def stream_image(update, CallbackContext) -> None:
     except ConnectionError:
         send_message(chatid, f"The model {username} cannot be seen because of connection issues, try again later", bot)
         logging.warning(f'{chatid} could not view {username} stream image because of connection issues')
-
 
 def view_stream_image_callback(update, CallbackContext):
     username = CallbackContext.match.string.replace("view_stream_image_callback_", "")
@@ -407,7 +407,7 @@ def view_stream_image_callback(update, CallbackContext):
 settings_menu_keyboard = [[InlineKeyboardButton("Link preview", callback_data='link_preview_menu'),
                            InlineKeyboardButton("Notifications sound", callback_data='notifications_sound_menu')]]
 
-
+@Utils.admin_check_decorator(admin_mode)
 def settings(update, CallbackContext):
     global bot
     global settings_menu_keyboard
@@ -528,15 +528,11 @@ def authorize_admin(update, CallbackContext) -> None:
     else:
         send_message(chatid, "The password is wrong", bot)
 
-
+@Utils.admin_check_decorator(True)
 def send_message_to_everyone(update, CallbackContext) -> None:
     global bot
     args = CallbackContext.args
     chatid = update.message.chat_id
-
-    if Utils.admin_check(chatid) == False:
-        send_message(chatid, "You're not authorized to do this", bot)
-        return
 
     chatid_list = []
     message = ""
@@ -557,22 +553,18 @@ def send_message_to_everyone(update, CallbackContext) -> None:
     logging.info(
         f"{chatid} finished sending a message to everyone, took {(datetime.datetime.now() - start_time).total_seconds()} seconds")
 
+@Utils.admin_check_decorator(admin_mode)
 def active_users(update, CallbackContext) -> None:
     global bot
     chatid = update.message.chat_id
-    if Utils.admin_check(chatid) == False:
-        send_message(chatid, "You're not authorized to do this", bot)
-        return
 
     users_count = Utils.retrieve_query_results("SELECT COUNT(CHAT_ID) FROM PREFERENCES")[0][0]
     send_message(chatid,f"The active users are {users_count}",bot)
 
+@Utils.admin_check_decorator(admin_mode)
 def active_models(update, CallbackContext) -> None:
     global bot
     chatid = update.message.chat_id
-    if Utils.admin_check(chatid) == False:
-        send_message(chatid, "You're not authorized to do this", bot)
-        return
 
     models_count = Utils.retrieve_query_results("SELECT COUNT(DISTINCT USERNAME) FROM CHATURBATE")[0][0]
     send_message(chatid,f"The active models are {models_count}",bot)

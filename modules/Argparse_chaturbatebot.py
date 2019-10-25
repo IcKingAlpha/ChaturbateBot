@@ -45,6 +45,11 @@ ap.add_argument(
     default="",
     help="The password to authorize yourself as an admin, Default = False")
 ap.add_argument(
+    "--admin-mode",
+    required=False,
+    default=False,
+    help="Should the bot commands be available only for admins?, Default = False")
+ap.add_argument(
     "--enable-logging",
     required=False,
     default=True,
