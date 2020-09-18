@@ -1,6 +1,7 @@
 import logging
 
 from modules import Utils
+from modules.alchemy import PreferenceUser
 
 
 def user_has_preferences(chatid: str) -> bool:
@@ -11,8 +12,8 @@ def user_has_preferences(chatid: str) -> bool:
     :param chatid: The chatid of the user who will be tested
     :return: True if it exists, False if it doesn't exist
     """
-    results = Utils.retrieve_query_results(f"SELECT * FROM PREFERENCES WHERE CHAT_ID={chatid}")
-    if not results:
+    results = Utils.alchemy_instance.session.query(PreferenceUser).filter_by(chat_id=str(chatid)).first()
+    if results is None:
         return False
     else:
         return True
@@ -24,7 +25,8 @@ def add_user_to_preferences(chatid: str) -> None:
 
     :param chatid: The chatid of the user who will be tested
     """
-    Utils.exec_query(f"INSERT INTO PREFERENCES VALUES ('{chatid}', '1', '1')")
+    Utils.alchemy_instance.session.add(PreferenceUser(chat_id=str(chatid)))
+    Utils.alchemy_instance.session.commit()
     logging.info(f'{chatid} has been added to preferences')
 
 
@@ -34,7 +36,9 @@ def remove_user_from_preferences(chatid: str) -> None:
 
     :param chatid: The chatid of the user who will be removed
     """
-    Utils.exec_query(f"DELETE FROM PREFERENCES WHERE CHAT_ID='{chatid}'")
+    user: PreferenceUser = Utils.alchemy_instance.session.query(PreferenceUser).filter_by(chat_id=str(chatid)).first()
+    Utils.alchemy_instance.session.delete(user)
+    Utils.alchemy_instance.session.commit()
     logging.info(f'{chatid} has been removed from preferences')
 
 
@@ -47,13 +51,10 @@ def update_link_preview_preference(chatid: str, value: bool) -> None:
     """
     if not user_has_preferences(chatid):
         add_user_to_preferences(chatid)
-        
-    if value:
-        value = 1
-    else:
-        value = 0
 
-    Utils.exec_query(f"UPDATE PREFERENCES SET LINK_PREVIEW='{value}' WHERE CHAT_ID='{chatid}'")
+    user: PreferenceUser = Utils.alchemy_instance.session.query(PreferenceUser).filter_by(chat_id=str(chatid)).first()
+    user.link_preview = value
+    Utils.alchemy_instance.session.commit()
 
 
 def get_user_link_preview_preference(chatid: str) -> bool:
@@ -66,11 +67,7 @@ def get_user_link_preview_preference(chatid: str) -> bool:
     if not user_has_preferences(chatid):
         add_user_to_preferences(chatid)
 
-    results = Utils.retrieve_query_results(f"SELECT LINK_PREVIEW FROM PREFERENCES WHERE CHAT_ID={chatid}")
-    if results[0][0] == 0:
-        return False
-    else:
-        return True
+    return Utils.alchemy_instance.session.query(PreferenceUser).filter_by(chat_id=str(chatid)).first().link_preview
 
 
 def update_notifications_sound_preference(chatid: str, value: bool) -> None:
@@ -83,12 +80,9 @@ def update_notifications_sound_preference(chatid: str, value: bool) -> None:
     if not user_has_preferences(chatid):
         add_user_to_preferences(chatid)
 
-    if value:
-        value = 1
-    else:
-        value = 0
-
-    Utils.exec_query(f"UPDATE PREFERENCES SET NOTIFICATIONS_SOUND='{value}' WHERE CHAT_ID='{chatid}'")
+    user: PreferenceUser = Utils.alchemy_instance.session.query(PreferenceUser).filter_by(chat_id=str(chatid)).first()
+    user.notifications_sound = value
+    Utils.alchemy_instance.session.commit()
 
 
 def get_user_notifications_sound_preference(chatid: str) -> bool:
@@ -101,8 +95,4 @@ def get_user_notifications_sound_preference(chatid: str) -> bool:
     if not user_has_preferences(chatid):
         add_user_to_preferences(chatid)
 
-    results = Utils.retrieve_query_results(f"SELECT NOTIFICATIONS_SOUND FROM PREFERENCES WHERE CHAT_ID={chatid}")
-    if results[0][0] == 0:
-        return False
-    else:
-        return True
+    return Utils.alchemy_instance.session.query(PreferenceUser).filter_by(chat_id=str(chatid)).first().notifications_sound

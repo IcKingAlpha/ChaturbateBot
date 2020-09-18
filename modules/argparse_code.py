@@ -55,5 +55,11 @@ ap.add_argument(
     type=str,
     default=str(Path.cwd()/"program_log.log"),
     help=f"Logging file location, Default={Path.cwd()/'program_log.log'}")
+ap.add_argument(
+    "--database-string",
+    required=False,
+    type=str,
+    default="postgresql://127.0.0.1:5432/ChaturbateBot",
+    help=f"Database connection string, default = postgresql://127.0.0.1:5432/ChaturbateBot")
 args = vars(ap.parse_args())
 

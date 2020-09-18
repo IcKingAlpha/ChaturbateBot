@@ -5,6 +5,7 @@ import logging
 import threading
 import time
 from queue import Queue
+from typing import List
 
 import telegram
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -14,6 +15,7 @@ from telegram.ext import CommandHandler, Updater, CallbackQueryHandler
 from modules import Exceptions
 from modules import Preferences
 from modules import Utils
+from modules.alchemy import Alchemy, PreferenceUser, ChaturbateUser, Admin
 from modules.argparse_code import args as argparse_args
 from modules.Model import Model
 
@@ -28,6 +30,7 @@ user_limit = argparse_args["limit"]
 auto_remove = Utils.str2bool(argparse_args["remove"])
 admin_pw = argparse_args["admin_password"]
 logging_file = argparse_args["logging_file"]
+Utils.alchemy_instance = Alchemy(argparse_args["database_string"])
 
 logging_level = logging.INFO
 if not Utils.str2bool(argparse_args["enable_logging"]):
@@ -37,14 +40,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging_level, filename=logging_file)
 
 
-def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = False, markup=None) -> None:
+def send_message(chatid: str, messaggio: str, bot_p: updater.bot, html: bool = False, markup=None) -> None:
     """
     Sends a message to a telegram user and sends "typing" action
 
 
     :param chatid: The chatid of the user who will receive the message
     :param messaggio: The message who the user will receive
-    :param bot: telegram bot instance
+    :param bot_p: telegram bot instance
     :param html: Enable html markdown parsing in the message
     :param markup: The reply_markup to use when sending the message
     """
@@ -56,38 +59,40 @@ def send_message(chatid: str, messaggio: str, bot: updater.bot, html: bool = Fal
         chatid)  # the setting is opposite of preference
 
     try:
-        bot.send_chat_action(chat_id=chatid, action="typing")
-        if html and markup != None:
-            bot.send_message(chat_id=chatid, text=messaggio,
-                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,
-                             reply_markup=markup, disable_notification=notification)
+        bot_p.send_chat_action(chat_id=chatid, action="typing")
+        if html and markup is not None:
+            bot_p.send_message(chat_id=chatid, text=messaggio,
+                               parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,
+                               reply_markup=markup, disable_notification=notification)
         elif html:
-            bot.send_message(chat_id=chatid, text=messaggio,
-                             parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,
-                             disable_notification=notification)
-        elif markup != None:
-            bot.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview,
-                             reply_markup=markup, disable_notification=notification)
+            bot_p.send_message(chat_id=chatid, text=messaggio,
+                               parse_mode=telegram.ParseMode.HTML, disable_web_page_preview=disable_webpage_preview,
+                               disable_notification=notification)
+        elif markup is not None:
+            bot_p.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview,
+                               reply_markup=markup, disable_notification=notification)
         else:
-            bot.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview,
-                             disable_notification=notification)
+            bot_p.send_message(chat_id=chatid, text=messaggio, disable_web_page_preview=disable_webpage_preview,
+                               disable_notification=notification)
     except Unauthorized:  # user blocked the bot
-        if auto_remove == True:
+        if auto_remove:
             logging.info(f"{chatid} blocked the bot, he's been removed from the database")
-            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+            Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(
+                chat_id=str(chatid)).delete(synchronize_session=False)
             Preferences.remove_user_from_preferences(chatid)
     except Exception as e:
         Utils.handle_exception(e)
 
 
-def send_image(chatid: str, image, bot: updater.bot, html: bool = False, markup=None, caption=None) -> None:
+def send_image(chatid: str, image, bot_p: updater.bot, html: bool = False, markup=None, caption=None) -> None:
     """
     Sends an image to a telegram user and sends "sending image" action
 
 
+    :param caption: Photo caption
     :param chatid: The chatid of the user who will receive the message
     :param image: The image to send
-    :param bot: telegram bot instance
+    :param bot_p: telegram bot instance
     :param html: Enable html markdown parsing in the message
     :param markup: The reply_markup to use when sending the message
     """
@@ -96,32 +101,33 @@ def send_image(chatid: str, image, bot: updater.bot, html: bool = False, markup=
         chatid)  # the setting is opposite of preference
 
     try:
-        bot.send_chat_action(chatid, action="upload_photo")
-        if html and markup != None and caption != None:
-            bot.send_photo(chat_id=chatid, photo=image, parse_mode=telegram.ParseMode.HTML, reply_markup=markup,
-                           disable_notification=notification, caption=caption)
-        elif html and markup != None:
-            bot.send_photo(chat_id=chatid, photo=image, parse_mode=telegram.ParseMode.HTML, reply_markup=markup,
-                           disable_notification=notification)
-        elif markup != None and caption != None:
-            bot.send_photo(chat_id=chatid, photo=image, reply_markup=markup, disable_notification=notification,
-                           caption=caption)
-        elif html and caption != None:
-            bot.send_photo(chat_id=chatid, photo=image, parse_mode=telegram.ParseMode.HTML,
-                           disable_notification=notification, caption=caption)
+        bot_p.send_chat_action(chatid, action="upload_photo")
+        if html and markup is not None and caption is not None:
+            bot_p.send_photo(chat_id=chatid, photo=image, parse_mode=telegram.ParseMode.HTML, reply_markup=markup,
+                             disable_notification=notification, caption=caption)
+        elif html and markup is not None:
+            bot_p.send_photo(chat_id=chatid, photo=image, parse_mode=telegram.ParseMode.HTML, reply_markup=markup,
+                             disable_notification=notification)
+        elif markup is not None and caption is not None:
+            bot_p.send_photo(chat_id=chatid, photo=image, reply_markup=markup, disable_notification=notification,
+                             caption=caption)
+        elif html and caption is not None:
+            bot_p.send_photo(chat_id=chatid, photo=image, parse_mode=telegram.ParseMode.HTML,
+                             disable_notification=notification, caption=caption)
         elif html:
-            bot.send_photo(chat_id=chatid, photo=image, parse_mode=telegram.ParseMode.HTML,
-                           disable_notification=notification)
-        elif markup != None:
-            bot.send_photo(chat_id=chatid, photo=image, reply_markup=markup, disable_notification=notification)
-        elif caption != None:
-            bot.send_photo(chat_id=chatid, photo=image, disable_notification=notification, caption=caption)
+            bot_p.send_photo(chat_id=chatid, photo=image, parse_mode=telegram.ParseMode.HTML,
+                             disable_notification=notification)
+        elif markup is not None:
+            bot_p.send_photo(chat_id=chatid, photo=image, reply_markup=markup, disable_notification=notification)
+        elif caption is not None:
+            bot_p.send_photo(chat_id=chatid, photo=image, disable_notification=notification, caption=caption)
         else:
-            bot.send_photo(chat_id=chatid, photo=image, disable_notification=notification)
+            bot_p.send_photo(chat_id=chatid, photo=image, disable_notification=notification)
     except Unauthorized:  # user blocked the bot
-        if auto_remove == True:
+        if auto_remove:
             logging.info(f"{chatid} blocked the bot, he's been removed from the database")
-            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+            Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(
+                chat_id=str(chatid)).delete(synchronize_session=False)
             Preferences.remove_user_from_preferences(chatid)
     except Exception as e:
         Utils.handle_exception(e)
@@ -169,11 +175,7 @@ def add(update, context) -> None:
 
     username_message_list = list(dict.fromkeys(username_message_list))  # remove duplicate usernames
 
-    usernames_in_database = []
-    # obtain present usernames
-    results = Utils.retrieve_query_results(f"SELECT USERNAME FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
-    for row in results:
-        usernames_in_database.append(row[0])
+    usernames_in_database = Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(chat_id=str(chatid)).all()
 
     # 0 is unlimited usernames
     if len(usernames_in_database) + len(username_message_list) > user_limit and (
@@ -187,7 +189,8 @@ def add(update, context) -> None:
         model_instance = Model(username)
         if model_instance.status not in ('deleted', 'banned', 'geoblocked', 'canceled', 'error'):
             if username not in usernames_in_database:
-                Utils.exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
+                Utils.alchemy_instance.session.add(ChaturbateUser(username=username, chat_id=chatid, online=False))
+                Utils.alchemy_instance.session.commit()
                 send_message(chatid, f"{username} has been added", bot)
                 logging.info(f'{chatid} added {username}')
             else:
@@ -235,19 +238,19 @@ def remove(update, context) -> None:
     else:
         username_message_list.append(Utils.sanitize_username(args[0]))
 
-    results = Utils.retrieve_query_results(f"SELECT * FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
-    for row in results:
-        usernames_in_database.append(row[0])
+    usernames_in_database = Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(chat_id=str(chatid)).all()
 
     if "all" in username_message_list:
-        Utils.exec_query(
-            f"DELETE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
+        Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(
+            chat_id=str(chatid)).all().delete(synchronize_session=False)
+        Utils.alchemy_instance.session.commit()
         send_message(chatid, "All usernames have been removed", bot)
         logging.info(f"{chatid} removed all usernames")
     else:
         for username in username_message_list:
             if username in usernames_in_database:
-                Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chatid}'")
+                Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(
+                    chat_id=str(chatid), username=str(username)).delete(synchronize_session=False)
                 send_message(chatid, f"{username} has been removed", bot)
                 logging.info(f"{chatid} removed {username}")
             else:
@@ -257,29 +260,25 @@ def remove(update, context) -> None:
 def list_command(update, context) -> None:
     global bot
     chatid = update.message.chat_id
-    username_dict = {}
-    followed_users = ""
+    output_string = ""
 
-    results = Utils.retrieve_query_results(f"SELECT USERNAME, ONLINE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
-    if results != []:  # an exception didn't happen
-        for row in results:
-            username = row[0]
-            status = row[1]
-            username_dict[username] = status
+    followed_users = Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(chat_id=chatid).all()
+    if followed_users is not None:  # an exception didn't happen
 
-        for username, status in sorted(username_dict.items()):
-            followed_users += f"{username}: "
-            if status == "T":
-                followed_users += "<b>online</b>\n"
+        for user in sorted(followed_users, key=lambda l: l.username):
+            user: ChaturbateUser
+            output_string += f"{user.username}: "
+            if user.online:
+                output_string += "<b>online</b>\n"
             else:
-                followed_users += "offline\n"
+                output_string += "offline\n"
 
-    if followed_users == "":
+    if output_string == "":
         send_message(chatid, "You aren't following any user", bot)
     else:
         send_message(
-            chatid, f"You are currently following these {len(username_dict)} users:\n" +
-                    followed_users, bot, html=True)
+            chatid, f"You are currently following these {len(followed_users)} users:\n" +
+                    output_string, bot, html=True)
 
 
 def stream_image(update, context) -> None:
@@ -520,7 +519,8 @@ def authorize_admin(update, context) -> None:
     if Utils.admin_check(chatid):
         send_message(chatid, "You already are an admin", bot)
     elif args[0] == admin_pw:
-        Utils.exec_query(f"""INSERT INTO ADMIN VALUES ({chatid})""")
+        Utils.alchemy_instance.session.add(Admin(chatid))
+        Utils.alchemy_instance.session.commit()
         send_message(chatid, "Admin enabled", bot)
         send_message(chatid,
                      "Remember to disable the --admin-password if you want to avoid people trying to bruteforce this command",
@@ -545,16 +545,14 @@ def send_message_to_everyone(update, context) -> None:
 
     logging.info(f"{chatid} started sending a message to everyone")
 
-    results = Utils.retrieve_query_results("SELECT DISTINCT CHAT_ID FROM CHATURBATE")
-    for row in results:
-        chatid_list.append(row[0])
+    chatid_list = Utils.alchemy_instance.session.query(PreferenceUser).filter_by(chat_id=str(chatid)).all()
 
     for word in args:
         message += f"{word} "
     message = message[:-1]
 
     for x in chatid_list:
-        send_message(x, message, bot)
+        send_message(x.chat_id, message, bot)
     logging.info(
         f"{chatid} finished sending a message to everyone, took {(datetime.datetime.now() - start_time).total_seconds()} seconds")
 
@@ -566,7 +564,7 @@ def active_users(update, context) -> None:
         send_message(chatid, "You're not authorized to do this", bot)
         return
 
-    users_count = Utils.retrieve_query_results("SELECT COUNT(CHAT_ID) FROM PREFERENCES")[0][0]
+    users_count = Utils.alchemy_instance.session.query(PreferenceUser).filter_by(chat_id=str(chatid)).count()
     send_message(chatid, f"The active users are {users_count}", bot)
 
 
@@ -577,7 +575,7 @@ def active_models(update, context) -> None:
         send_message(chatid, "You're not authorized to do this", bot)
         return
 
-    models_count = Utils.retrieve_query_results("SELECT COUNT(DISTINCT USERNAME) FROM CHATURBATE")[0][0]
+    models_count = Utils.alchemy_instance.session.query(ChaturbateUser.username).distinct().count()
     send_message(chatid, f"The active models are {models_count}", bot)
 
 
@@ -593,21 +591,19 @@ def check_online_status() -> None:
         chat_and_online_dict = {}
 
         # create a dictionary with usernames and online using distinct
-        results = Utils.retrieve_query_results("SELECT DISTINCT USERNAME FROM CHATURBATE")
-        for row in results:
-            username_list.append(row[0])
+
+        username_list = Utils.alchemy_instance.session.query(ChaturbateUser.username).distinct().all()
 
         # obtain chatid
         for username in username_list:
-            results = Utils.retrieve_query_results(
-                f"SELECT DISTINCT CHAT_ID, ONLINE FROM CHATURBATE WHERE USERNAME='{username}'")
+            results: List[ChaturbateUser] = Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(
+                username=username).all()
             chat_and_online_dict[username] = results  # assign (chatid,online) to every model
 
         # Threaded function for queue processing.
         def crawl(q, model_instances_dict):
             while not q.empty():
-                work = q.get()  # fetch new work from the Queue
-                username = Utils.sanitize_username(work[1])
+                username = Utils.sanitize_username(q.get()[1].username)
                 model_instance = Model(username, autoupdate=False)
                 model_instance.update_model_status()
                 try:
@@ -652,25 +648,27 @@ def check_online_status() -> None:
 
                 if model_instance.status != "error":
                     for chatid_tuple in chat_and_online_dict[username]:
-                        chat_id = chatid_tuple[0]
-                        db_status = chatid_tuple[1]
+                        chat_id = chatid_tuple.chat_id
+                        db_status = chatid_tuple.online
 
-                        if model_instance.online and db_status == "F":
+                        if model_instance.online and db_status == False:
 
                             if model_instance.status in {"away", "private", "hidden",
                                                          "password"}:  # assuming the user knows the password
-                                Utils.exec_query(
-                                    f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                                Utils.alchemy_instance.session.query(ChaturbateUser).filter(
+                                    ChaturbateUser.username == username and ChaturbateUser.chat_id == chat_id).update(
+                                    {ChaturbateUser.online: True}, synchronize_session=False)
                                 send_message(chat_id,
                                              f"{username} is now <b>online</b>!\n<i>No link preview can be provided</i>",
                                              bot, html=True,
                                              markup=markup_without_link_preview)
                             else:
-                                Utils.exec_query(
-                                    f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                                Utils.alchemy_instance.session.query(ChaturbateUser).filter(
+                                    ChaturbateUser.username == username and ChaturbateUser.chat_id == chat_id).update(
+                                    {ChaturbateUser.online: True}, synchronize_session=False)
 
                                 if Preferences.get_user_link_preview_preference(
-                                        chat_id) and model_instance.model_image != None:
+                                        chat_id) and model_instance.model_image is not None:
                                     send_image(chat_id, model_instance.model_image, bot,
                                                markup=markup_with_link_preview,
                                                caption=f"{username} is now <b>online</b>!", html=True)
@@ -678,32 +676,37 @@ def check_online_status() -> None:
                                     send_message(chat_id, f"{username} is now <b>online</b>!", bot, html=True,
                                                  markup=markup_without_link_preview)
 
-                        elif model_instance.online == False and db_status == "T":
-                            Utils.exec_query(
-                                f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                        elif model_instance.online == False and db_status:
+                            Utils.alchemy_instance.session.query(ChaturbateUser).filter(
+                                ChaturbateUser.username == username and ChaturbateUser.chat_id == chat_id).update(
+                                {ChaturbateUser.online: False}, synchronize_session=False)
                             send_message(chat_id, f"{username} is now <b>offline</b>", bot, html=True)
 
                         if model_instance.status == "deleted":
-                            Utils.exec_query(
-                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                            Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(username=username,
+                                                                                           chat_id=chat_id).delete(
+                                synchronize_session=False)
                             send_message(chat_id, f"{username} has been removed because room has been deleted", bot)
                             logging.info(f"{username} has been removed from {chat_id} because room has been deleted")
 
                         elif model_instance.status == "banned":
-                            Utils.exec_query(
-                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                            Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(username=username,
+                                                                                           chat_id=chat_id).delete(
+                                synchronize_session=False)
                             send_message(chat_id, f"{username} has been removed because room has been banned", bot)
                             logging.info(f"{username} has been removed from {chat_id} because has been banned")
 
                         elif model_instance.status == "canceled":
-                            Utils.exec_query(
-                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                            Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(username=username,
+                                                                                           chat_id=chat_id).delete(
+                                synchronize_session=False)
                             send_message(chat_id, f"{username} has been removed because room has been canceled", bot)
                             logging.info(f"{username} has been removed from {chat_id} because has been canceled")
 
                         elif model_instance.status == "geoblocked":
-                            Utils.exec_query(
-                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                            Utils.alchemy_instance.session.query(ChaturbateUser).filter_by(username=username,
+                                                                                           chat_id=chat_id).delete(
+                                synchronize_session=False)
                             send_message(chat_id,
                                          f"{username} has been removed because of geoblocking",
                                          bot)
@@ -712,7 +715,7 @@ def check_online_status() -> None:
             except Exception as e:
                 Utils.handle_exception(e)
 
-    while (1):
+    while 1:
         try:
             update_status()
         except Exception as e:
@@ -723,57 +726,23 @@ def check_online_status() -> None:
 
 
 dispatcher.add_handler(CommandHandler(('start', 'help'), start))
-
 dispatcher.add_handler(CommandHandler('add', add))
-
 dispatcher.add_handler(CommandHandler('remove', remove))
-
 dispatcher.add_handler(CommandHandler('list', list_command))
-
 dispatcher.add_handler(CommandHandler('stream_image', stream_image))
-
 dispatcher.add_handler(CommandHandler('settings', settings))
-
 dispatcher.add_handler(CallbackQueryHandler(link_preview_callback, pattern='link_preview_menu'))
-
 dispatcher.add_handler(CallbackQueryHandler(link_preview_callback_update_value,
                                             pattern='link_preview_callback_True|link_preview_callback_False'))
-
 dispatcher.add_handler(CallbackQueryHandler(notifications_sound_callback, pattern='notifications_sound_menu'))
-
 dispatcher.add_handler(CallbackQueryHandler(notifications_sound_callback_update_value,
                                             pattern='notifications_sound_callback_True|notifications_sound_callback_False'))
-
 dispatcher.add_handler(CallbackQueryHandler(settings, pattern='settings_menu'))
-
 dispatcher.add_handler(CallbackQueryHandler(view_stream_image_callback, pattern='view_stream_image_callback_'))
-
 dispatcher.add_handler(CommandHandler('authorize_admin', authorize_admin))
-
 dispatcher.add_handler(CommandHandler('send_message_to_everyone', send_message_to_everyone))
-
 dispatcher.add_handler(CommandHandler('active_users', active_users))
-
 dispatcher.add_handler(CommandHandler('active_models', active_models))
-
-logging.info('Checking database existence...')
-
-# default table creation
-Utils.exec_query("""CREATE TABLE IF NOT EXISTS CHATURBATE (
-        USERNAME  CHAR(60) NOT NULL,
-        CHAT_ID  CHAR(100),
-        ONLINE CHAR(1))""")
-
-# admin table creation
-Utils.exec_query("""CREATE TABLE IF NOT EXISTS ADMIN (
-        CHAT_ID  CHAR(100))""")
-
-Utils.exec_query('''CREATE TABLE IF NOT EXISTS "PREFERENCES" (
-	"CHAT_ID"	CHAR(100) UNIQUE,
-	"LINK_PREVIEW"	INTEGER DEFAULT 1,
-	"NOTIFICATIONS_SOUND"	INTEGER DEFAULT 1,
-	PRIMARY KEY("CHAT_ID")
-)''')
 
 logging.info('Starting models checking thread...')
 threading.Thread(target=check_online_status, daemon=True).start()
