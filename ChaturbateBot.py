@@ -130,7 +130,7 @@ def send_image(chatid: str, image, bot: updater.bot, html: bool = False, markup=
 # region normal functions
 
 
-def start(update, CallbackContext) -> None:
+def start(update, context) -> None:
     global bot
     chatid = update.message.chat_id
     send_message(chatid,
@@ -142,9 +142,9 @@ def start(update, CallbackContext) -> None:
                  bot, html=True)
 
 
-def add(update, CallbackContext) -> None:
+def add(update, context) -> None:
     global bot
-    args = CallbackContext.args
+    args = context.args
     chatid = update.message.chat_id
     username_message_list = []
     if len(args) < 1:
@@ -210,9 +210,9 @@ def add(update, CallbackContext) -> None:
             logging.info(f'{chatid} could not add {username} because an error happened')
 
 
-def remove(update, CallbackContext) -> None:
+def remove(update, context) -> None:
     global bot
-    args = CallbackContext.args
+    args = context.args
     chatid = update.message.chat_id
     username_message_list = []
     usernames_in_database = []
@@ -256,7 +256,7 @@ def remove(update, CallbackContext) -> None:
 
 
 
-def list_command(update, CallbackContext) -> None:
+def list_command(update, context) -> None:
     global bot
     chatid = update.message.chat_id
     username_dict = {}
@@ -284,9 +284,9 @@ def list_command(update, CallbackContext) -> None:
                     followed_users, bot, html=True)
 
 
-def stream_image(update, CallbackContext) -> None:
+def stream_image(update, context) -> None:
     global bot
-    args = CallbackContext.args
+    args = context.args
     chatid = update.message.chat_id
 
     if len(args) < 1:
@@ -340,8 +340,8 @@ def stream_image(update, CallbackContext) -> None:
         logging.warning(f'{chatid} could not view {username} stream image because of connection issues')
 
 
-def view_stream_image_callback(update, CallbackContext):
-    username = CallbackContext.match.string.replace("view_stream_image_callback_", "")
+def view_stream_image_callback(update, context):
+    username = context.match.string.replace("view_stream_image_callback_", "")
     chatid = update.callback_query.message.chat_id
     messageid = update.callback_query.message.message_id
     if Utils.is_chatid_temp_banned(chatid):
@@ -408,7 +408,7 @@ settings_menu_keyboard = [[InlineKeyboardButton("Link preview", callback_data='l
                            InlineKeyboardButton("Notifications sound", callback_data='notifications_sound_menu')]]
 
 
-def settings(update, CallbackContext):
+def settings(update, context):
     global bot
     global settings_menu_keyboard
     chatid = update.effective_chat.id
@@ -430,7 +430,7 @@ def settings(update, CallbackContext):
         send_message(chatid, settings_message, bot, markup=message_markup, html=True)
 
 
-def link_preview_callback(update, CallbackContext):
+def link_preview_callback(update, context):
     query = update.callback_query
 
     keyboard = [[InlineKeyboardButton("Enable", callback_data='link_preview_callback_True'),
@@ -442,7 +442,7 @@ def link_preview_callback(update, CallbackContext):
     query.edit_message_text(text=f"Select an option", reply_markup=markup)
 
 
-def link_preview_callback_update_value(update, CallbackContext):
+def link_preview_callback_update_value(update, context):
     query = update.callback_query
     chatid = query.message.chat.id
 
@@ -462,7 +462,7 @@ def link_preview_callback_update_value(update, CallbackContext):
                             parse_mode=telegram.ParseMode.HTML)
 
 
-def notifications_sound_callback(update, CallbackContext):
+def notifications_sound_callback(update, context):
     query = update.callback_query
 
     keyboard = [[InlineKeyboardButton("Enable", callback_data='notifications_sound_callback_True'),
@@ -474,7 +474,7 @@ def notifications_sound_callback(update, CallbackContext):
     query.edit_message_text(text=f"Select an option", reply_markup=markup)
 
 
-def notifications_sound_callback_update_value(update, CallbackContext):
+def notifications_sound_callback_update_value(update, context):
     query = update.callback_query
     chatid = query.message.chat.id
 
@@ -498,9 +498,9 @@ def notifications_sound_callback_update_value(update, CallbackContext):
 
 # region admin functions
 
-def authorize_admin(update, CallbackContext) -> None:
+def authorize_admin(update, context) -> None:
     global bot
-    args = CallbackContext.args
+    args = context.args
     chatid = update.message.chat_id
 
     if len(args) != 1:
@@ -529,9 +529,9 @@ def authorize_admin(update, CallbackContext) -> None:
         send_message(chatid, "The password is wrong", bot)
 
 
-def send_message_to_everyone(update, CallbackContext) -> None:
+def send_message_to_everyone(update, context) -> None:
     global bot
-    args = CallbackContext.args
+    args = context.args
     chatid = update.message.chat_id
 
     if Utils.admin_check(chatid) == False:
@@ -557,7 +557,7 @@ def send_message_to_everyone(update, CallbackContext) -> None:
     logging.info(
         f"{chatid} finished sending a message to everyone, took {(datetime.datetime.now() - start_time).total_seconds()} seconds")
 
-def active_users(update, CallbackContext) -> None:
+def active_users(update, context) -> None:
     global bot
     chatid = update.message.chat_id
     if Utils.admin_check(chatid) == False:
@@ -567,7 +567,7 @@ def active_users(update, CallbackContext) -> None:
     users_count = Utils.retrieve_query_results("SELECT COUNT(CHAT_ID) FROM PREFERENCES")[0][0]
     send_message(chatid,f"The active users are {users_count}",bot)
 
-def active_models(update, CallbackContext) -> None:
+def active_models(update, context) -> None:
     global bot
     chatid = update.message.chat_id
     if Utils.admin_check(chatid) == False:
