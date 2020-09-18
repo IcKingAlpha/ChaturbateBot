@@ -14,7 +14,7 @@ from telegram.ext import CommandHandler, Updater, CallbackQueryHandler
 from modules import Exceptions
 from modules import Preferences
 from modules import Utils
-from modules.Argparse_chaturbatebot import args as argparse_args
+from modules.argparse_code import args as argparse_args
 from modules.Model import Model
 
 updater = Updater(token=argparse_args["key"], use_context=True)

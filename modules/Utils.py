@@ -2,7 +2,7 @@ import logging
 import sqlite3
 import datetime
 
-from modules.Argparse_chaturbatebot import args
+from modules.argparse_code import args
 
 bot_path = args["working_folder"]
 last_spam_dict = {}
