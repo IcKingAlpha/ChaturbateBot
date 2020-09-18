@@ -183,29 +183,28 @@ def add(update, context) -> None:
         logging.info(f'{chatid} tried to add more usernames than his limit permits')
         return
 
-
     for username in username_message_list:
-        model_instance=Model(username)
+        model_instance = Model(username)
         if model_instance.status not in ('deleted', 'banned', 'geoblocked', 'canceled', 'error'):
             if username not in usernames_in_database:
                 Utils.exec_query(f"INSERT INTO CHATURBATE VALUES ('{username}', '{chatid}', 'F')")
                 send_message(chatid, f"{username} has been added", bot)
                 logging.info(f'{chatid} added {username}')
             else:
-                send_message(chatid,f"{username} has already been added",bot)
-        elif model_instance.status=='deleted':
+                send_message(chatid, f"{username} has already been added", bot)
+        elif model_instance.status == 'deleted':
             send_message(chatid, f"{username} has not been added because is deleted", bot)
             logging.info(f"{chatid} could not add {username} because is deleted")
-        elif model_instance.status=='banned':
+        elif model_instance.status == 'banned':
             send_message(chatid, f"{username} has not been added because is banned", bot)
             logging.info(f"{chatid} could not add {username} because is banned")
-        elif model_instance.status=='geoblocked':
+        elif model_instance.status == 'geoblocked':
             send_message(chatid, f"{username} has not been added because is geoblocked", bot)
             logging.info(f"{chatid} could not add {username} because is geoblocked")
-        elif model_instance.status=='canceled':
+        elif model_instance.status == 'canceled':
             send_message(chatid, f"{username} was not added because it doesn't exist", bot)
             logging.info(f'{chatid} tried to add {username}, which does not exist')
-        elif model_instance.status=='error':
+        elif model_instance.status == 'error':
             send_message(chatid, f"{username} was not added because an error happened", bot)
             logging.info(f'{chatid} could not add {username} because an error happened')
 
@@ -255,7 +254,6 @@ def remove(update, context) -> None:
                 send_message(chatid, f"You aren't following {username}", bot)
 
 
-
 def list_command(update, context) -> None:
     global bot
     chatid = update.message.chat_id
@@ -265,9 +263,9 @@ def list_command(update, context) -> None:
     results = Utils.retrieve_query_results(f"SELECT USERNAME, ONLINE FROM CHATURBATE WHERE CHAT_ID='{chatid}'")
     if results != []:  # an exception didn't happen
         for row in results:
-            username=row[0]
-            status=row[1]
-            username_dict[username]=status
+            username = row[0]
+            status = row[1]
+            username_dict[username] = status
 
         for username, status in sorted(username_dict.items()):
             followed_users += f"{username}: "
@@ -305,7 +303,7 @@ def stream_image(update, context) -> None:
             Utils.set_last_spam_date(chatid, datetime.datetime.now())
         elif (datetime.datetime.now() - Utils.get_last_spam_date(chatid)).total_seconds() <= 3:
             Utils.temp_ban_chatid(chatid, 10)
-            send_message(chatid,"You have been temporarily banned for spamming, try again later", bot)
+            send_message(chatid, "You have been temporarily banned for spamming, try again later", bot)
             logging.warning(f"Soft banned {chatid} for 10 seconds for spamming image updates")
         else:
             Utils.set_last_spam_date(chatid, datetime.datetime.now())
@@ -354,7 +352,9 @@ def view_stream_image_callback(update, context):
 
     try:
         bot.edit_message_media(chat_id=chatid, message_id=messageid,
-                               media=telegram.InputMediaPhoto(model_instance.model_image,caption=f"{username} is now <b>online</b>!",parse_mode=telegram.ParseMode.HTML), reply_markup=markup)
+                               media=telegram.InputMediaPhoto(model_instance.model_image,
+                                                              caption=f"{username} is now <b>online</b>!",
+                                                              parse_mode=telegram.ParseMode.HTML), reply_markup=markup)
 
 
     except Exceptions.ModelPrivate:
@@ -373,7 +373,8 @@ def view_stream_image_callback(update, context):
             Exceptions.ModelOffline):
         keyboard = [[InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}')]]
         markup = InlineKeyboardMarkup(keyboard)
-        bot.edit_message_reply_markup(chat_id=chatid, message_id=messageid, reply_markup=markup) #remove update image button
+        bot.edit_message_reply_markup(chat_id=chatid, message_id=messageid,
+                                      reply_markup=markup)  # remove update image button
         send_message(chatid, f"The model {username} cannot be seen because is {model_instance.status}", bot)
         logging.warning(f'{chatid} could not view {username} image update because is {model_instance.status}')
 
@@ -390,9 +391,9 @@ def view_stream_image_callback(update, context):
             if "Message is not modified" in e.message:
                 send_message(chatid, f"This is the latest update of {username}", bot)
                 if not Utils.admin_check(chatid):
-                    if Utils.get_last_spam_date(chatid)==None:
+                    if Utils.get_last_spam_date(chatid) == None:
                         Utils.set_last_spam_date(chatid, datetime.datetime.now())
-                    elif (datetime.datetime.now()-Utils.get_last_spam_date(chatid)).total_seconds() <= 3:
+                    elif (datetime.datetime.now() - Utils.get_last_spam_date(chatid)).total_seconds() <= 3:
                         Utils.temp_ban_chatid(chatid, 25)
                         send_message(chatid, "You have been temporarily banned for spamming, try again later", bot)
                         logging.warning(f"Soft banned {chatid} for 25 seconds for spamming image updates")
@@ -534,7 +535,7 @@ def send_message_to_everyone(update, context) -> None:
     args = context.args
     chatid = update.message.chat_id
 
-    if Utils.admin_check(chatid) == False:
+    if not Utils.admin_check(chatid):
         send_message(chatid, "You're not authorized to do this", bot)
         return
 
@@ -557,25 +558,27 @@ def send_message_to_everyone(update, context) -> None:
     logging.info(
         f"{chatid} finished sending a message to everyone, took {(datetime.datetime.now() - start_time).total_seconds()} seconds")
 
+
 def active_users(update, context) -> None:
     global bot
     chatid = update.message.chat_id
-    if Utils.admin_check(chatid) == False:
+    if not Utils.admin_check(chatid):
         send_message(chatid, "You're not authorized to do this", bot)
         return
 
     users_count = Utils.retrieve_query_results("SELECT COUNT(CHAT_ID) FROM PREFERENCES")[0][0]
-    send_message(chatid,f"The active users are {users_count}",bot)
+    send_message(chatid, f"The active users are {users_count}", bot)
+
 
 def active_models(update, context) -> None:
     global bot
     chatid = update.message.chat_id
-    if Utils.admin_check(chatid) == False:
+    if not Utils.admin_check(chatid):
         send_message(chatid, "You're not authorized to do this", bot)
         return
 
     models_count = Utils.retrieve_query_results("SELECT COUNT(DISTINCT USERNAME) FROM CHATURBATE")[0][0]
-    send_message(chatid,f"The active models are {models_count}",bot)
+    send_message(chatid, f"The active models are {models_count}", bot)
 
 
 # endregion
@@ -587,7 +590,7 @@ def check_online_status() -> None:
 
     def update_status() -> None:
         username_list = []
-        chat_and_online_dict={}
+        chat_and_online_dict = {}
 
         # create a dictionary with usernames and online using distinct
         results = Utils.retrieve_query_results("SELECT DISTINCT USERNAME FROM CHATURBATE")
@@ -596,16 +599,16 @@ def check_online_status() -> None:
 
         # obtain chatid
         for username in username_list:
-            results = Utils.retrieve_query_results(f"SELECT DISTINCT CHAT_ID, ONLINE FROM CHATURBATE WHERE USERNAME='{username}'")
-            chat_and_online_dict[username]=results # assign (chatid,online) to every model
-
+            results = Utils.retrieve_query_results(
+                f"SELECT DISTINCT CHAT_ID, ONLINE FROM CHATURBATE WHERE USERNAME='{username}'")
+            chat_and_online_dict[username] = results  # assign (chatid,online) to every model
 
         # Threaded function for queue processing.
         def crawl(q, model_instances_dict):
             while not q.empty():
                 work = q.get()  # fetch new work from the Queue
                 username = Utils.sanitize_username(work[1])
-                model_instance=Model(username,autoupdate=False)
+                model_instance = Model(username, autoupdate=False)
                 model_instance.update_model_status()
                 try:
                     model_instance.update_model_image()
@@ -637,61 +640,70 @@ def check_online_status() -> None:
 
         for username in username_list:
             model_instance = model_instances_dict[username]
-            keyboard_with_link_preview = [[InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}'),
-                                           InlineKeyboardButton("Update stream image",callback_data='view_stream_image_callback_' + username)]]
+            keyboard_with_link_preview = [
+                [InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}'),
+                 InlineKeyboardButton("Update stream image", callback_data='view_stream_image_callback_' + username)]]
             keyboard_without_link_preview = [
                 [InlineKeyboardButton("Watch the live", url=f'http://chaturbate.com/{username}')]]
             markup_with_link_preview = InlineKeyboardMarkup(keyboard_with_link_preview)
             markup_without_link_preview = InlineKeyboardMarkup(keyboard_without_link_preview)
 
-
-
             try:
 
                 if model_instance.status != "error":
                     for chatid_tuple in chat_and_online_dict[username]:
-                        chat_id=chatid_tuple[0]
-                        db_status=chatid_tuple[1]
+                        chat_id = chatid_tuple[0]
+                        db_status = chatid_tuple[1]
 
                         if model_instance.online and db_status == "F":
 
-                            if model_instance.status in {"away", "private", "hidden", "password"}:  # assuming the user knows the password
-                                Utils.exec_query(f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
-                                send_message(chat_id, f"{username} is now <b>online</b>!\n<i>No link preview can be provided</i>", bot, html=True,
-                                                     markup=markup_without_link_preview)
+                            if model_instance.status in {"away", "private", "hidden",
+                                                         "password"}:  # assuming the user knows the password
+                                Utils.exec_query(
+                                    f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                                send_message(chat_id,
+                                             f"{username} is now <b>online</b>!\n<i>No link preview can be provided</i>",
+                                             bot, html=True,
+                                             markup=markup_without_link_preview)
                             else:
                                 Utils.exec_query(
                                     f"UPDATE CHATURBATE SET ONLINE='T' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
 
-                                if Preferences.get_user_link_preview_preference(chat_id) and model_instance.model_image != None:
-                                        send_image(chat_id, model_instance.model_image, bot, markup=markup_with_link_preview,
+                                if Preferences.get_user_link_preview_preference(
+                                        chat_id) and model_instance.model_image != None:
+                                    send_image(chat_id, model_instance.model_image, bot,
+                                               markup=markup_with_link_preview,
                                                caption=f"{username} is now <b>online</b>!", html=True)
                                 else:
-                                        send_message(chat_id,f"{username} is now <b>online</b>!",bot,html=True,markup=markup_without_link_preview)
+                                    send_message(chat_id, f"{username} is now <b>online</b>!", bot, html=True,
+                                                 markup=markup_without_link_preview)
 
-                        elif model_instance.online==False and db_status == "T":
-                                Utils.exec_query(
-                                    f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
-                                send_message(chat_id, f"{username} is now <b>offline</b>", bot, html=True)
+                        elif model_instance.online == False and db_status == "T":
+                            Utils.exec_query(
+                                f"UPDATE CHATURBATE SET ONLINE='F' WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                            send_message(chat_id, f"{username} is now <b>offline</b>", bot, html=True)
 
-
-                        if model_instance.status=="deleted":
-                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                        if model_instance.status == "deleted":
+                            Utils.exec_query(
+                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
                             send_message(chat_id, f"{username} has been removed because room has been deleted", bot)
                             logging.info(f"{username} has been removed from {chat_id} because room has been deleted")
 
-                        elif model_instance.status=="banned":
-                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                        elif model_instance.status == "banned":
+                            Utils.exec_query(
+                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
                             send_message(chat_id, f"{username} has been removed because room has been banned", bot)
                             logging.info(f"{username} has been removed from {chat_id} because has been banned")
 
-                        elif model_instance.status=="canceled":
-                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                        elif model_instance.status == "canceled":
+                            Utils.exec_query(
+                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
                             send_message(chat_id, f"{username} has been removed because room has been canceled", bot)
                             logging.info(f"{username} has been removed from {chat_id} because has been canceled")
 
-                        elif model_instance.status=="geoblocked":
-                            Utils.exec_query(f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
+                        elif model_instance.status == "geoblocked":
+                            Utils.exec_query(
+                                f"DELETE FROM CHATURBATE WHERE USERNAME='{username}' AND CHAT_ID='{chat_id}'")
                             send_message(chat_id,
                                          f"{username} has been removed because of geoblocking",
                                          bot)
@@ -743,8 +755,6 @@ dispatcher.add_handler(CommandHandler('send_message_to_everyone', send_message_t
 dispatcher.add_handler(CommandHandler('active_users', active_users))
 
 dispatcher.add_handler(CommandHandler('active_models', active_models))
-
-
 
 logging.info('Checking database existence...')
 
